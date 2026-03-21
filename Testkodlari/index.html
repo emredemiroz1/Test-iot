@@ -17,7 +17,6 @@
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
         import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
-        // Senin sağladığın gerçek Firebase yapılandırması
         const firebaseConfig = {
             apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
             authDomain: "akillisera-b71d4.firebaseapp.com",
@@ -34,7 +33,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global erişim (React Script'i ile haberleşmek için)
+        // Global erişim
         window.db = db;
         window.auth = auth;
         window.customAppId = customAppId;
@@ -48,25 +47,25 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
-        .bg-main { background: radial-gradient(circle at top right, #111827, #000000); }
-        .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; }
+        .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .animate-pulse-slow { animation: pulse 3s infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     </style>
 </head>
-<body class="bg-[#020617] text-slate-200 min-h-screen">
+<body class="text-slate-200">
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // İkon Bileşeni (Lucide ikonlarını React içinde güvenli kullanmak için)
+        // İkon Bileşeni: Lucide ikonlarını güvenli render eder
         const Icon = ({ name, className, size = 24 }) => {
             useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
+                if (window.lucide) window.lucide.createIcons();
             }, [name]);
-            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
         };
 
         function App() {
@@ -76,18 +75,14 @@
             const [activeProject, setActiveProject] = useState(null);
             
             const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
-            const [parkingData, setParkingData] = useState({ slots: [false, false, false, false], occupied: 0 });
+            const [parkingData, setParkingData] = useState({ occupied: 0 });
             const [homeData, setHomeData] = useState({ light: false });
 
             useEffect(() => {
                 const initAuth = async () => {
                     try {
-                        if (window.auth) {
-                            await window.signInAnonymously(window.auth);
-                        }
-                    } catch (e) {
-                        console.error("Bağlantı Hatası:", e);
-                    }
+                        if (window.auth) await window.signInAnonymously(window.auth);
+                    } catch (e) { console.error("Auth hatası:", e); }
                 };
                 initAuth();
                 if (window.onAuthStateChanged && window.auth) {
@@ -97,17 +92,16 @@
 
             useEffect(() => {
                 if (!user || !window.db) return;
-                
                 const path = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
 
                 const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
                     if (d.exists()) setGreenhouseData(d.data());
-                    else window.setDoc(path('greenhouse'), { temp: 24, hum: 60, fan: false });
+                    else window.setDoc(path('greenhouse'), { temp: 24, hum: 55, fan: false });
                 });
 
                 const unsubParking = window.onSnapshot(path('parking'), (d) => {
                     if (d.exists()) setParkingData(d.data());
-                    else window.setDoc(path('parking'), { slots: [false, false, false, false], occupied: 0 });
+                    else window.setDoc(path('parking'), { occupied: 0 });
                 });
 
                 const unsubHome = window.onSnapshot(path('home'), (d) => {
@@ -122,23 +116,23 @@
                 if (passcode === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
                 else if (passcode === '5678') { setActiveProject('parking'); setIsAuth(true); }
                 else if (passcode === '0000') { setActiveProject('home'); setIsAuth(true); }
-                else { alert("PIN Hatalı!"); setPasscode(''); }
+                else { alert("Hatalı PIN!"); setPasscode(''); }
             };
 
             const toggleCommand = async (proj, field, val) => {
                 const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
-                await window.updateDoc(ref, { [field]: val, lastAction: new Date() });
+                await window.updateDoc(ref, { [field]: val });
             };
 
             if (!isAuth) {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-6 bg-main">
-                        <div className="w-full max-w-sm glass-card rounded-[48px] p-10 shadow-2xl text-center border border-white/10">
-                            <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/20 -rotate-3">
-                                <Icon name="shield-check" className="text-white" size={48} />
+                        <div className="w-full max-w-sm glass-card rounded-[48px] p-10 shadow-2xl text-center">
+                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30">
+                                <Icon name="shield-check" className="text-white" size={40} />
                             </div>
-                            <h1 className="text-3xl font-black text-white mb-2 tracking-tight uppercase leading-none">IOT MASTER</h1>
-                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-12 italic">Güvenli Erişim Paneli</p>
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase">IOT MASTER</h1>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Giriş Yapın</p>
                             
                             <div className="space-y-4">
                                 <input 
@@ -146,16 +140,9 @@
                                     value={passcode} 
                                     onChange={(e) => setPasscode(e.target.value)}
                                     placeholder="PIN KODU" 
-                                    className="w-full bg-white/5 border border-white/10 rounded-3xl py-6 px-6 text-white text-center text-4xl tracking-[0.5em] focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-800 placeholder:tracking-normal placeholder:text-sm"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                                    className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                
-                                <button 
-                                    onClick={handleLogin} 
-                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-6 rounded-3xl transition-all shadow-xl shadow-blue-600/30 flex items-center justify-center gap-3 active:scale-95"
-                                >
-                                    SİSTEME GİRİŞ YAP <Icon name="chevron-right" size={20} />
-                                </button>
+                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl active:scale-95 transition-all">SİSTEME BAĞLAN</button>
                             </div>
                         </div>
                     </div>
@@ -163,63 +150,52 @@
             }
 
             return (
-                <div className="min-h-screen flex flex-col pb-24">
-                    <header className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 px-6 py-6 flex justify-between items-center sticky top-0 z-50">
-                        <div className="flex items-center gap-4">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-2xl ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
-                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} size={26}/>
+                <div className="min-h-screen bg-main flex flex-col pb-24">
+                    <header className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-50">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-3 rounded-xl shadow-lg ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
+                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} className="text-white" size={24}/>
                             </div>
-                            <div>
-                                <h2 className="font-black text-xl uppercase tracking-tighter leading-none italic text-white">
-                                    {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark Üssü' : 'Akıllı Ev'}
-                                </h2>
-                                <div className="flex items-center gap-2 mt-2">
-                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
-                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Bulut Bağlantısı Aktif</p>
-                                </div>
-                            </div>
+                            <h2 className="font-black text-lg uppercase italic text-white">
+                                {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark' : 'Akıllı Ev'}
+                            </h2>
                         </div>
-                        <button 
-                            onClick={() => {setIsAuth(false); setActiveProject(null); setPasscode('');}} 
-                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-slate-400 hover:text-red-500 transition-all active:scale-90"
-                        >
-                            <Icon name="log-out" size={22} />
-                        </button>
+                        <button onClick={() => setIsAuth(false)} className="p-3 bg-white/5 rounded-xl text-slate-400"><Icon name="log-out" size={20} /></button>
                     </header>
                     
-                    <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
+                    <main className="p-6 max-w-xl mx-auto w-full space-y-6">
                         {activeProject === 'greenhouse' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="glass-card p-8 rounded-[40px] text-center">
+                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
                                         <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white leading-none">{greenhouseData.temp}°C</span>
-                                        <p className="text-[10px] font-black text-slate-500 mt-3 uppercase tracking-widest italic">İç Sıcaklık</p>
+                                        <span className="text-4xl font-black text-white">{greenhouseData.temp}°C</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Sıcaklık</p>
                                     </div>
-                                    <div className="glass-card p-8 rounded-[40px] text-center">
+                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
                                         <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
-                                        <span className="text-4xl font-black text-white leading-none">%{greenhouseData.hum}</span>
-                                        <p className="text-[10px] font-black text-slate-500 mt-3 uppercase tracking-widest italic">Nem Oranı</p>
+                                        <span className="text-4xl font-black text-white">%{greenhouseData.hum}</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Hava Nemi</p>
                                     </div>
                                 </div>
-                                <button onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 transition-all ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-2xl shadow-emerald-500/20' : 'bg-white/5 text-slate-400'}`}>
+                                <button onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 transition-all ${greenhouseData.fan ? 'bg-emerald-600 shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}>
                                     <div className="flex items-center gap-4">
-                                        <Icon name="wind" size={24} className={greenhouseData.fan ? 'animate-spin' : ''} />
-                                        <span className="italic tracking-tighter">FAN SİSTEMİ</span>
+                                        <Icon name="wind" className={greenhouseData.fan ? 'animate-spin' : ''} size={24} />
+                                        <span>HAVALANDIRMA</span>
                                     </div>
-                                    <span className="text-xs font-bold uppercase">{greenhouseData.fan ? 'AKTİF' : 'KAPALI'}</span>
+                                    <span className="text-xs">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
                                 </button>
                             </div>
                         )}
                         {activeProject === 'parking' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                 <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
-                                    <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
-                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Otopark Doluluk</p>
+                                    <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5 animate-pulse-slow" size={200} />
+                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Doluluk Durumu</p>
                                     <div className="flex items-center justify-center gap-6 relative">
-                                        <h3 className="text-[10rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied}</h3>
+                                        <h3 className="text-[9rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied}</h3>
                                         <div className="text-left leading-none">
-                                            <p className="text-4xl font-black text-slate-700 italic">/ 4</p>
+                                            <p className="text-3xl font-black text-slate-700 italic">/ 4</p>
                                             <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ</p>
                                         </div>
                                     </div>
@@ -227,17 +203,17 @@
                             </div>
                         )}
                         {activeProject === 'home' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
-                                <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[48px] p-10 text-white shadow-2xl relative overflow-hidden border border-white/5 text-center">
-                                    <Icon name="shield-check" size={120} className="absolute -right-12 -bottom-12 opacity-5" />
-                                    <h3 className="text-2xl font-black mb-2 flex items-center justify-center gap-3 tracking-tighter uppercase italic leading-none"><Icon name="zap" className="text-indigo-400" /> AKILLI KONUT</h3>
-                                    <p className="text-indigo-300/60 text-sm mt-3 font-medium">Güvenlik ve otomasyon aktif.</p>
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                                <div className="bg-indigo-900/40 p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5 text-center">
+                                    <Icon name="shield-check" size={100} className="absolute -right-8 -bottom-8 opacity-10" />
+                                    <h3 className="text-2xl font-black mb-2 uppercase italic text-indigo-400">Akıllı Konut</h3>
+                                    <p className="text-slate-400 text-sm font-medium">Sistem güvenliği aktif.</p>
                                 </div>
-                                <button 
-                                    onClick={() => toggleCommand('home', 'light', !homeData.light)} 
-                                    className={`w-full p-10 rounded-[44px] flex items-center justify-between transition-all group ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-2xl shadow-yellow-400/20' : 'bg-white/5 text-slate-400 border border-white/5'}`}
-                                >
-                                    <div className="font-black block text-xl tracking-tighter uppercase leading-none text-left italic">Salon Işığı</div>
+                                <button onClick={() => toggleCommand('home', 'light', !homeData.light)} className={`w-full p-10 rounded-[44px] font-black flex items-center justify-between px-10 transition-all ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}>
+                                    <div className="flex items-center gap-6">
+                                        <Icon name="zap" className={homeData.light ? 'rotate-12' : ''} size={36} />
+                                        <span className="text-xl uppercase italic">Salon Işığı</span>
+                                    </div>
                                     <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
                                         <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
                                     </div>
@@ -245,7 +221,7 @@
                             </div>
                         )}
                     </main>
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur shadow-2xl px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40 transition-all hover:scale-105 active:scale-95">
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
                         <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />
                         <span className="text-[10px] font-black text-white uppercase tracking-widest italic">Senkronizasyon Aktif</span>
                     </div>

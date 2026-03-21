@@ -15,7 +15,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
@@ -33,7 +33,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global erişim için window nesnesine ekliyoruz
+        // Global erişim
         window.db = db;
         window.auth = auth;
         window.customAppId = customAppId;
@@ -41,17 +41,17 @@
         window.onAuthStateChanged = onAuthStateChanged;
         window.onSnapshot = onSnapshot;
         window.setDoc = setDoc;
-        window.updateDoc = updateDoc;
         window.doc = doc;
     </script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; overflow-x: hidden; }
         .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
         .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .btn-interact { cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-interact { cursor: pointer !important; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); pointer-events: auto !important; }
         .btn-interact:active { transform: scale(0.95); opacity: 0.8; }
+        .btn-interact:disabled { opacity: 0.5; cursor: wait !important; }
     </style>
 </head>
 <body class="text-slate-200">
@@ -72,11 +72,11 @@
             const [isAuth, setIsAuth] = useState(false);
             const [passcode, setPasscode] = useState('');
             const [activeProject, setActiveProject] = useState(null);
-            const [isPending, setIsPending] = useState(false);
+            const [loading, setLoading] = useState(false);
             
             const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
             const [parkingData, setParkingData] = useState({ occupied: 0 });
-            const [homeData, setHomeData] = useState({ light: false });
+            const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false });
 
             useEffect(() => {
                 const initAuth = async () => {
@@ -94,51 +94,40 @@
                 if (!user || !window.db) return;
                 const path = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
 
-                // Sera Verilerini Dinle
                 const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
                     if (d.exists()) setGreenhouseData(d.data());
-                }, (err) => console.error("Sera Dinleme Hatası:", err));
+                });
 
-                // Otopark Verilerini Dinle
                 const unsubParking = window.onSnapshot(path('parking'), (d) => {
                     if (d.exists()) setParkingData(d.data());
-                }, (err) => console.error("Otopark Dinleme Hatası:", err));
+                });
 
-                // Akıllı Ev Verilerini Dinle
                 const unsubHome = window.onSnapshot(path('home'), (d) => {
-                    if (d.exists()) {
-                        setHomeData(d.data());
-                    } else {
-                        // Eğer döküman yoksa başlangıç değerini oluştur
-                        window.setDoc(path('home'), { light: false }, { merge: true });
-                    }
-                }, (err) => console.error("Ev Dinleme Hatası:", err));
+                    if (d.exists()) setHomeData(d.data());
+                });
 
                 return () => { unsubSera(); unsubParking(); unsubHome(); };
             }, [user]);
 
             const handleLogin = () => {
-                if (passcode === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
-                else if (passcode === '5678') { setActiveProject('parking'); setIsAuth(true); }
-                else if (passcode === '0000') { setActiveProject('home'); setIsAuth(true); }
+                const code = passcode.trim();
+                if (code === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
+                else if (code === '5678') { setActiveProject('parking'); setIsAuth(true); }
+                else if (code === '0000') { setActiveProject('home'); setIsAuth(true); }
                 else { alert("Hatalı PIN!"); setPasscode(''); }
             };
 
             const toggleCommand = async (proj, field, val) => {
-                if (isPending) return;
-                setIsPending(true);
+                if (loading) return;
+                setLoading(true);
                 try {
                     const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
-                    console.log(`Komut Gönderiliyor: ${proj} -> ${field} = ${val}`);
-                    
-                    // setDoc with merge: true hem dökümanı oluşturur hem günceller
+                    // setDoc MERGE ile döküman yoksa bile oluşturur!
                     await window.setDoc(ref, { [field]: val }, { merge: true });
-                    console.log("Komut Başarıyla Gönderildi!");
                 } catch (err) {
                     console.error("Gonderim Hatası:", err);
-                    alert("Veri gönderilemedi: " + err.message);
                 } finally {
-                    setIsPending(false);
+                    setLoading(false);
                 }
             };
 
@@ -150,23 +139,19 @@
                                 <Icon name="shield-check" className="text-white" size={40} />
                             </div>
                             <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase leading-none">IOT MASTER</h1>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Sisteme Giriş Yapın</p>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">PIN KODU GEREKLİ</p>
                             
                             <div className="space-y-4">
                                 <input 
-                                    type="password" 
+                                    type="text" 
+                                    pattern="\d*"
+                                    inputMode="numeric"
                                     value={passcode} 
                                     onChange={(e) => setPasscode(e.target.value)}
-                                    placeholder="PIN KODU" 
+                                    placeholder="PIN" 
                                     className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500"
-                                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                                 />
-                                <button 
-                                    onClick={handleLogin} 
-                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact"
-                                >
-                                    SİSTEME BAĞLAN
-                                </button>
+                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact">BAĞLAN</button>
                             </div>
                         </div>
                     </div>
@@ -188,81 +173,115 @@
                     </header>
                     
                     <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
-                        {/* SERA PANELİ */}
                         {activeProject === 'greenhouse' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 text-center">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
+                                    <div className="glass-card p-8 rounded-[40px]">
                                         <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white">{greenhouseData.temp || 0}°C</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">İç Sıcaklık</p>
+                                        <span className="text-4xl font-black text-white">{greenhouseData.temp || 0}°</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Sıcaklık</p>
                                     </div>
-                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
+                                    <div className="glass-card p-8 rounded-[40px]">
                                         <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
                                         <span className="text-4xl font-black text-white">%{greenhouseData.hum || 0}</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">Nem Oranı</p>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Nem</p>
                                     </div>
                                 </div>
                                 <button 
-                                    disabled={isPending}
+                                    disabled={loading}
                                     onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} 
-                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${isPending ? 'opacity-50' : ''} ${greenhouseData.fan ? 'bg-emerald-600 shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
+                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         <Icon name="wind" className={greenhouseData.fan ? 'animate-spin' : ''} size={24} />
-                                        <span className="italic uppercase">Fan Sistemi</span>
+                                        <span>HAVALANDIRMA SİSTEMİ</span>
                                     </div>
-                                    <span className="text-xs font-bold">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'} {isPending && '...'}</span>
+                                    <span className="text-xs">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
                                 </button>
                             </div>
                         )}
 
-                        {/* OTOPARK PANELİ */}
                         {activeProject === 'parking' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                                <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 text-center">
+                                <div className="glass-card p-12 rounded-[56px] relative overflow-hidden">
                                     <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
-                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Mevcut Doluluk</p>
+                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">GÜNCEL DURUM</p>
                                     <div className="flex items-center justify-center gap-6 relative">
                                         <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied || 0}</h3>
                                         <div className="text-left leading-none">
                                             <p className="text-3xl font-black text-slate-700 italic">/ 4</p>
-                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none text-nowrap">ARAÇ</p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ VAR</p>
                                         </div>
                                     </div>
+                                </div>
+                                <div className="grid grid-cols-4 gap-2 px-2">
+                                    {[1, 2, 3, 4].map(i => (
+                                        <div key={i} className={`h-12 rounded-xl flex items-center justify-center border ${i <= (parkingData.occupied || 0) ? 'bg-red-500/20 border-red-500 text-red-500' : 'bg-green-500/20 border-green-500 text-green-500'}`}>
+                                            <Icon name="car" size={16} />
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
                         )}
 
-                        {/* AKILLI EV PANELİ */}
                         {activeProject === 'home' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                                <div className="bg-gradient-to-br from-indigo-900/60 to-slate-900 p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5 text-center">
-                                    <Icon name="shield-check" size={100} className="absolute -right-8 -bottom-8 opacity-10" />
-                                    <h3 className="text-2xl font-black mb-2 uppercase italic text-indigo-400 leading-none">Akıllı Kontrol</h3>
-                                    <p className="text-slate-400 text-sm font-medium mt-2">Ev güvenliği ve aydınlatma aktif.</p>
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+                                <div className="bg-indigo-900/40 p-10 rounded-[48px] shadow-2xl border border-white/5 text-center">
+                                    <h3 className="text-2xl font-black mb-1 uppercase italic text-indigo-400 leading-none">EV KONTROL ÜSSÜ</h3>
+                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Sistem Güvenliği Aktif</p>
                                 </div>
+                                
+                                {/* Salon Işığı */}
                                 <button 
-                                    disabled={isPending}
+                                    disabled={loading}
                                     onClick={() => toggleCommand('home', 'light', !homeData.light)} 
-                                    className={`w-full p-10 rounded-[44px] font-black flex items-center justify-between px-10 btn-interact ${isPending ? 'opacity-50' : ''} ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
+                                    className={`w-full p-8 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
                                 >
-                                    <div className="flex items-center gap-6">
-                                        <Icon name="zap" className={homeData.light ? 'rotate-12 text-yellow-950' : 'text-slate-400'} size={36} />
-                                        <span className="text-xl uppercase italic">Salon Işığı</span>
+                                    <div className="flex items-center gap-5">
+                                        <Icon name="zap" className={homeData.light ? 'rotate-12' : ''} size={28} />
+                                        <span className="text-lg uppercase italic tracking-tighter">Salon Işığı</span>
                                     </div>
-                                    <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
-                                        <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
+                                        <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.light ? 'translate-x-5' : 'translate-x-0'}`}></div>
                                     </div>
                                 </button>
-                                {isPending && <p className="text-center text-[10px] text-blue-400 font-bold uppercase animate-pulse">Buluta yazılıyor...</p>}
+
+                                {/* Mutfak Işığı */}
+                                <button 
+                                    disabled={loading}
+                                    onClick={() => toggleCommand('home', 'kitchen', !homeData.kitchen)} 
+                                    className={`w-full p-8 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact ${homeData.kitchen ? 'bg-blue-400 text-blue-950 shadow-blue-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <Icon name="utensils" size={28} />
+                                        <span className="text-lg uppercase italic tracking-tighter">Mutfak Işığı</span>
+                                    </div>
+                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.kitchen ? 'bg-blue-600' : 'bg-slate-700'}`}>
+                                        <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.kitchen ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                    </div>
+                                </button>
+
+                                {/* Akıllı Priz */}
+                                <button 
+                                    disabled={loading}
+                                    onClick={() => toggleCommand('home', 'plug', !homeData.plug)} 
+                                    className={`w-full p-8 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact ${homeData.plug ? 'bg-emerald-400 text-emerald-950 shadow-emerald-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
+                                >
+                                    <div className="flex items-center gap-5">
+                                        <Icon name="power" size={28} />
+                                        <span className="text-lg uppercase italic tracking-tighter">Akıllı Priz</span>
+                                    </div>
+                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.plug ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+                                        <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.plug ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                    </div>
+                                </button>
                             </div>
                         )}
                     </main>
 
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
                         <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest italic leading-none">Bulut Senkronizasyonu Aktif</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">Canlı Senkronizasyon</span>
                     </div>
                 </div>
             );

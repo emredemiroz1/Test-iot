@@ -1,17 +1,17 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IOT Master | Kontrol Merkezi</title>
-
+    <!-- Stil ve İkon Kütüphaneleri -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
-
+    <!-- React ve Firebase Kütüphaneleri -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
+    
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -28,7 +28,7 @@
             measurementId: "G-NNJK2RKKDG"
         };
 
-        const customAppId = "master-iot-final-v2";
+        const customAppId = "master-iot-final-v2"; 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -41,68 +41,27 @@
         window.onSnapshot = onSnapshot;
         window.signInAnonymously = signInAnonymously;
         window.onAuthStateChanged = onAuthStateChanged;
-        window.firebaseReady = true;
-
-        console.log("Firebase modülleri yüklendi.");
     </script>
-
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-
-        body {
-            font-family: 'Inter', sans-serif;
-            -webkit-tap-highlight-color: transparent;
-            background-color: #020617;
-            overflow-x: hidden;
-        }
-
-        .bg-main {
-            background: radial-gradient(circle at top right, #0f172a, #020617);
-        }
-
-        .glass-card {
-            background: rgba(30, 41, 59, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .btn-interact {
-            cursor: pointer !important;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; overflow-x: hidden; }
+        .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        
+        .btn-interact { 
+            cursor: pointer !important; 
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
             pointer-events: auto !important;
             user-select: none;
             position: relative;
             z-index: 10;
         }
+        .btn-interact:active { transform: scale(0.96); opacity: 0.9; }
+        .btn-interact:disabled { opacity: 0.4; cursor: wait !important; }
 
-        .btn-interact:active {
-            transform: scale(0.96);
-            opacity: 0.9;
-        }
-
-        .btn-interact:hover {
-            filter: brightness(1.1);
-        }
-
-        .btn-interact:disabled {
-            opacity: 0.4;
-            cursor: not-allowed !important;
-        }
-
-        .loader {
-            width: 12px;
-            height: 12px;
-            border: 2px solid #FFF;
-            border-bottom-color: transparent;
-            border-radius: 50%;
-            display: inline-block;
-            animation: rotation 1s linear infinite;
-        }
-
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+        .loader { width: 12px; height: 12px; border: 2px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
+        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-slate-200">
@@ -113,18 +72,9 @@
 
         const Icon = ({ name, className, size = 24 }) => {
             useEffect(() => {
-                if (window.lucide) {
-                    window.lucide.createIcons();
-                }
+                if (window.lucide) window.lucide.createIcons();
             }, [name]);
-
-            return (
-                <i
-                    data-lucide={name}
-                    className={className}
-                    style={{ width: size, height: size, display: 'inline-block' }}
-                ></i>
-            );
+            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
         };
 
         function App() {
@@ -134,160 +84,71 @@
             const [activeProject, setActiveProject] = useState(null);
             const [loading, setLoading] = useState(false);
             const [errorMsg, setErrorMsg] = useState('');
-            const [firebaseLoaded, setFirebaseLoaded] = useState(false);
-
-            const [greenhouseData, setGreenhouseData] = useState({
-                temp: 0,
-                hum: 0,
-                fan: false
-            });
-
-            const [parkingData, setParkingData] = useState({
-                occupied: 0
-            });
-
-            const [homeData, setHomeData] = useState({
-                light: false,
-                kitchen: false,
-                plug: false
-            });
+            
+            const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
+            const [parkingData, setParkingData] = useState({ occupied: 0 });
+            const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
 
             useEffect(() => {
-                const waitFirebase = setInterval(() => {
-                    if (window.firebaseReady && window.auth && window.db) {
-                        setFirebaseLoaded(true);
-                        clearInterval(waitFirebase);
+                const initAuth = async () => {
+                    try {
+                        if (window.auth) {
+                            const cred = await window.signInAnonymously(window.auth);
+                            console.log("Bağlantı başarılı:", cred.user.uid);
+                        }
+                    } catch (e) { 
+                        console.error("Firebase Auth Hatası:", e);
+                        setErrorMsg("Bulut bağlantı hatası! (Lütfen Firebase'de Anonymous Auth'u açın)");
                     }
-                }, 100);
-
-                return () => clearInterval(waitFirebase);
+                };
+                initAuth();
+                if (window.onAuthStateChanged && window.auth) {
+                    return window.onAuthStateChanged(window.auth, (u) => setUser(u));
+                }
             }, []);
 
             useEffect(() => {
-                if (!firebaseLoaded) return;
-
-                const initAuth = async () => {
-                    try {
-                        await window.signInAnonymously(window.auth);
-                        console.log("Anonim giriş yapıldı.");
-                    } catch (e) {
-                        console.error("Auth hatası:", e);
-                        setErrorMsg("Bulut bağlantı hatası!");
-                    }
-                };
-
-                initAuth();
-
-                if (window.onAuthStateChanged && window.auth) {
-                    return window.onAuthStateChanged(window.auth, (u) => {
-                        setUser(u);
-                        if (u) setErrorMsg('');
-                    });
-                }
-            }, [firebaseLoaded]);
-
-            useEffect(() => {
-                if (!user || !window.db || !window.doc || !window.onSnapshot) return;
-
-                const getRef = (name) =>
-                    window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
+                if (!user || !window.db) return;
+                const getRef = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
 
                 const unsubSera = window.onSnapshot(getRef('greenhouse'), (d) => {
-                    if (d.exists()) {
-                        setGreenhouseData(d.data());
-                    }
+                    if (d.exists()) setGreenhouseData(d.data());
                 });
 
                 const unsubParking = window.onSnapshot(getRef('parking'), (d) => {
-                    if (d.exists()) {
-                        setParkingData(d.data());
-                    }
+                    if (d.exists()) setParkingData(d.data());
                 });
 
-                const unsubHome = window.onSnapshot(getRef('home'), async (d) => {
-                    if (d.exists()) {
-                        setHomeData(d.data());
-                    } else {
-                        try {
-                            await window.setDoc(
-                                getRef('home'),
-                                { light: false, kitchen: false, plug: false },
-                                { merge: true }
-                            );
-                        } catch (err) {
-                            console.error("Home başlangıç verisi oluşturulamadı:", err);
-                        }
-                    }
+                const unsubHome = window.onSnapshot(getRef('home'), (d) => {
+                    if (d.exists()) setHomeData(d.data());
+                    else window.setDoc(getRef('home'), { light: false, kitchen: false, plug: false, ac: false, garden: false }, { merge: true });
                 });
 
-                return () => {
-                    unsubSera();
-                    unsubParking();
-                    unsubHome();
-                };
+                return () => { unsubSera(); unsubParking(); unsubHome(); };
             }, [user]);
 
             const handleLogin = () => {
                 const code = passcode.trim();
-
-                if (code === '1234') {
-                    setActiveProject('greenhouse');
-                    setIsAuth(true);
-                } else if (code === '5678') {
-                    setActiveProject('parking');
-                    setIsAuth(true);
-                } else if (code === '0000') {
-                    setActiveProject('home');
-                    setIsAuth(true);
-                } else {
-                    alert("Hatalı PIN!");
-                    setPasscode('');
-                }
+                if (code === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
+                else if (code === '5678') { setActiveProject('parking'); setIsAuth(true); }
+                else if (code === '0000') { setActiveProject('home'); setIsAuth(true); }
+                else { alert("Hatalı PIN!"); setPasscode(''); }
             };
 
             const toggleCommand = async (proj, field, currentVal) => {
-                if (loading || !user || !window.db || !window.doc || !window.setDoc) return;
-
+                if (loading || !user) return;
                 setLoading(true);
-                setErrorMsg('');
-
                 try {
                     const nextVal = !currentVal;
-                    const ref = window.doc(
-                        window.db,
-                        'artifacts',
-                        window.customAppId,
-                        'public',
-                        'data',
-                        proj,
-                        'status'
-                    );
-
-                    console.log(`Gönderiliyor: ${field} -> ${nextVal}`);
-
+                    const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
                     await window.setDoc(ref, { [field]: nextVal }, { merge: true });
-
-                    console.log("Başarıyla güncellendi.");
                 } catch (err) {
-                    console.error("Veri gönderilemedi:", err);
-                    setErrorMsg("Komut gönderilemedi!");
+                    console.error("Yazma Hatası:", err);
+                    setErrorMsg("Veri gönderilemedi!");
                 } finally {
                     setLoading(false);
                 }
             };
-
-            if (!firebaseLoaded) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center bg-main p-6">
-                        <div className="glass-card rounded-[40px] px-8 py-10 text-center">
-                            <div className="loader mx-auto mb-4"></div>
-                            <p className="text-white font-bold uppercase tracking-widest text-xs">
-                                Firebase yükleniyor...
-                            </p>
-                        </div>
-                    </div>
-                );
-            }
 
             if (!isAuth) {
                 return (
@@ -296,31 +157,19 @@
                             <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30">
                                 <Icon name="shield-check" className="text-white" size={40} />
                             </div>
-
-                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase leading-none">
-                                IOT MASTER
-                            </h1>
-
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">
-                                PIN KODU GEREKLİ
-                            </p>
-
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase leading-none text-nowrap">IOT MASTER</h1>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Giriş Yapın</p>
+                            
                             <div className="space-y-4">
-                                <input
-                                    type="text"
+                                <input 
+                                    type="text" 
                                     inputMode="numeric"
-                                    value={passcode}
+                                    value={passcode} 
                                     onChange={(e) => setPasscode(e.target.value)}
-                                    placeholder="PIN"
+                                    placeholder="PIN" 
                                     className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-
-                                <button
-                                    onClick={handleLogin}
-                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact"
-                                >
-                                    BAĞLAN
-                                </button>
+                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact">BAĞLAN</button>
                             </div>
                         </div>
                     </div>
@@ -328,43 +177,19 @@
             }
 
             return (
-                <div className="min-h-screen bg-main flex flex-col pb-24">
+                <div className="min-h-screen bg-main flex flex-col pb-24 overflow-y-auto">
                     <header className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-50">
                         <div className="flex items-center gap-3">
                             <div className={`p-3 rounded-xl shadow-lg ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
-                                <Icon
-                                    name={
-                                        activeProject === 'greenhouse'
-                                            ? 'droplets'
-                                            : activeProject === 'parking'
-                                            ? 'car'
-                                            : 'home'
-                                    }
-                                    className="text-white"
-                                    size={24}
-                                />
+                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} className="text-white" size={24}/>
                             </div>
-
                             <h2 className="font-black text-lg uppercase italic text-white leading-none">
-                                {activeProject === 'greenhouse'
-                                    ? 'Akıllı Sera'
-                                    : activeProject === 'parking'
-                                    ? 'Otopark'
-                                    : 'Akıllı Ev'}
+                                {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark' : 'Akıllı Ev'}
                             </h2>
                         </div>
-
-                        <button
-                            onClick={() => {
-                                setIsAuth(false);
-                                setPasscode('');
-                            }}
-                            className="p-3 bg-white/5 rounded-xl text-slate-400 btn-interact"
-                        >
-                            <Icon name="log-out" size={20} />
-                        </button>
+                        <button onClick={() => {setIsAuth(false); setPasscode('');}} className="p-3 bg-white/5 rounded-xl text-slate-400 btn-interact"><Icon name="log-out" size={20} /></button>
                     </header>
-
+                    
                     <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
                         {errorMsg && (
                             <div className="bg-red-500/20 border border-red-500 text-red-500 p-4 rounded-2xl text-center text-xs font-bold animate-pulse">
@@ -377,35 +202,25 @@
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="glass-card p-8 rounded-[40px]">
                                         <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white">
-                                            {greenhouseData.temp || 0}°
-                                        </span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">
-                                            Sıcaklık
-                                        </p>
+                                        <span className="text-4xl font-black text-white">{greenhouseData.temp || 0}°</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Sıcaklık</p>
                                     </div>
-
                                     <div className="glass-card p-8 rounded-[40px]">
                                         <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
-                                        <span className="text-4xl font-black text-white">
-                                            %{greenhouseData.hum || 0}
-                                        </span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">
-                                            Nem
-                                        </p>
+                                        <span className="text-4xl font-black text-white">%{greenhouseData.hum || 0}</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Nem</p>
                                     </div>
                                 </div>
-
-                                <button
+                                <button 
                                     disabled={loading}
-                                    onClick={() => toggleCommand('greenhouse', 'fan', greenhouseData.fan)}
-                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
+                                    onClick={() => toggleCommand('greenhouse', 'fan', greenhouseData.fan)} 
+                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         <Icon name="wind" className={greenhouseData.fan ? 'animate-spin' : ''} size={24} />
-                                        <span>{loading ? 'GÖNDERİLİYOR...' : 'HAVALANDIRMA SİSTEMİ'}</span>
+                                        <span>HAVALANDIRMA</span>
                                     </div>
-                                    <span className="text-xs">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
+                                    <span className="text-xs font-bold">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
                                 </button>
                             </div>
                         )}
@@ -413,24 +228,13 @@
                         {activeProject === 'parking' && (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 text-center">
                                 <div className="glass-card p-12 rounded-[56px] relative overflow-hidden">
-                                    <Icon
-                                        name="activity"
-                                        className="absolute -right-12 -top-12 text-orange-500 opacity-5"
-                                        size={200}
-                                    />
-                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">
-                                        GÜNCEL DURUM
-                                    </p>
-
+                                    <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
+                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">GÜNCEL DURUM</p>
                                     <div className="flex items-center justify-center gap-6 relative">
-                                        <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">
-                                            {parkingData.occupied || 0}
-                                        </h3>
+                                        <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied || 0}</h3>
                                         <div className="text-left leading-none">
                                             <p className="text-3xl font-black text-slate-700 italic">/ 4</p>
-                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">
-                                                ARAÇ VAR
-                                            </p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ VAR</p>
                                         </div>
                                     </div>
                                 </div>
@@ -439,74 +243,43 @@
 
                         {activeProject === 'home' && (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
-                                <div className="bg-indigo-900/40 p-10 rounded-[48px] shadow-2xl border border-white/5 text-center">
-                                    <h3 className="text-2xl font-black mb-1 uppercase italic text-indigo-400 leading-none">
-                                        EV KONTROL ÜSSÜ
-                                    </h3>
-                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">
-                                        Sistem Güvenliği Aktif
-                                    </p>
+                                <div className="bg-gradient-to-br from-indigo-900/60 to-slate-900 p-8 rounded-[48px] shadow-2xl border border-white/5 text-center">
+                                    <h3 className="text-xl font-black mb-1 uppercase italic text-indigo-400">EV KONTROL ÜSSÜ</h3>
+                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Sistem Güvenliği Aktif</p>
                                 </div>
-
-                                <button
-                                    disabled={loading}
-                                    onClick={() => toggleCommand('home', 'light', homeData.light)}
-                                    className={`w-full p-9 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl border-none' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
-                                >
-                                    <div className="flex items-center gap-5">
-                                        <Icon name="zap" className={homeData.light ? 'rotate-12' : ''} size={28} />
-                                        <span className="text-lg uppercase italic tracking-tighter">
-                                            {loading ? 'İŞLENİYOR...' : 'Salon Işığı'}
-                                        </span>
-                                    </div>
-                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
-                                        <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.light ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                                    </div>
-                                </button>
-
-                                <button
-                                    disabled={loading}
-                                    onClick={() => toggleCommand('home', 'kitchen', homeData.kitchen)}
-                                    className={`w-full p-9 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact ${homeData.kitchen ? 'bg-blue-400 text-blue-950 shadow-blue-400/30 shadow-2xl border-none' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
-                                >
-                                    <div className="flex items-center gap-5">
-                                        <Icon name="utensils" size={28} />
-                                        <span className="text-lg uppercase italic tracking-tighter">
-                                            Mutfak Işığı
-                                        </span>
-                                    </div>
-                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.kitchen ? 'bg-blue-600' : 'bg-slate-700'}`}>
-                                        <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.kitchen ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                                    </div>
-                                </button>
-
-                                <button
-                                    disabled={loading}
-                                    onClick={() => toggleCommand('home', 'plug', homeData.plug)}
-                                    className={`w-full p-9 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact ${homeData.plug ? 'bg-emerald-400 text-emerald-950 shadow-emerald-400/30 shadow-2xl border-none' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
-                                >
-                                    <div className="flex items-center gap-5">
-                                        <Icon name="power" size={28} />
-                                        <span className="text-lg uppercase italic tracking-tighter">
-                                            Akıllı Priz
-                                        </span>
-                                    </div>
-                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.plug ? 'bg-emerald-600' : 'bg-slate-700'}`}>
-                                        <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.plug ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                                    </div>
-                                </button>
+                                
+                                <div className="space-y-3">
+                                    {[
+                                        { id: 'light', label: 'Salon Işığı', icon: 'zap', color: 'yellow' },
+                                        { id: 'kitchen', label: 'Mutfak Işığı', icon: 'utensils', color: 'blue' },
+                                        { id: 'plug', label: 'Akıllı Priz', icon: 'power', color: 'emerald' },
+                                        { id: 'ac', label: 'Klima Sistemi', icon: 'snowflake', color: 'cyan' },
+                                        { id: 'garden', label: 'Bahçe Aydınlatma', icon: 'sun', color: 'orange' }
+                                    ].map((item) => (
+                                        <button 
+                                            key={item.id}
+                                            disabled={loading}
+                                            onClick={() => toggleCommand('home', item.id, homeData[item.id])} 
+                                            className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData[item.id] ? `bg-${item.color}-500/90 text-white shadow-lg border-transparent` : 'bg-slate-800 text-slate-400 border-white/5'}`}
+                                        >
+                                            <div className="flex items-center gap-5">
+                                                <Icon name={item.icon} size={28} />
+                                                <span className="text-lg uppercase italic tracking-tighter">{item.label}</span>
+                                            </div>
+                                            <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData[item.id] ? 'bg-white/20' : 'bg-slate-700'}`}>
+                                                <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData[item.id] ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                            </div>
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         )}
                     </main>
 
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
-                        {loading ? (
-                            <span className="loader"></span>
-                        ) : (
-                            <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />
-                        )}
+                        {loading ? <span className="loader"></span> : <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />}
                         <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
-                            {loading ? 'VERİ GÖNDERİLİYOR' : 'CANLI SENKRONİZASYON'}
+                            {loading ? 'GÖNDERİLİYOR' : 'CANLI SENKRONİZASYON'}
                         </span>
                     </div>
                 </div>

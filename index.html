@@ -33,14 +33,18 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        window.db = db;
-        window.auth = auth;
-        window.customAppId = customAppId;
-        window.doc = doc;
-        window.setDoc = setDoc;
-        window.onSnapshot = onSnapshot;
-        window.signInAnonymously = signInAnonymously;
-        window.onAuthStateChanged = onAuthStateChanged;
+        // Global değişkenleri güvenli bir şekilde ata
+        window.fb_db = db;
+        window.fb_auth = auth;
+        window.fb_appId = customAppId;
+        window.fb_doc = doc;
+        window.fb_setDoc = setDoc;
+        window.fb_onSnapshot = onSnapshot;
+        window.fb_signIn = signInAnonymously;
+        window.fb_onAuth = onAuthStateChanged;
+
+        window.firebaseReady = true;
+        console.log("Firebase hazır.");
     </script>
     
     <style>
@@ -48,20 +52,10 @@
         body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; overflow-x: hidden; }
         .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
         .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        
-        .btn-interact { 
-            cursor: pointer !important; 
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
-            pointer-events: auto !important;
-            user-select: none;
-            position: relative;
-            z-index: 10;
-        }
+        .btn-interact { cursor: pointer !important; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none; }
         .btn-interact:active { transform: scale(0.96); opacity: 0.9; }
-        .btn-interact:disabled { opacity: 0.4; cursor: not-allowed !important; }
-
-        .loader { width: 12px; height: 12px; border: 2px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
-        @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .loader { width: 14px; height: 14px; border: 2px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 1s linear infinite; }
+        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body class="text-slate-200">
@@ -72,7 +66,7 @@
 
         const Icon = ({ name, className, size = 24 }) => {
             useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
+                try { if (window.lucide) window.lucide.createIcons(); } catch(e) {}
             }, [name]);
             return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
         };
@@ -90,88 +84,81 @@
             const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
 
             useEffect(() => {
-                const initAuth = async () => {
-                    try {
-                        if (window.auth) {
-                            await window.signInAnonymously(window.auth);
-                        }
-                    } catch (e) { 
-                        setErrorMsg("Bulut bağlantı hatası!");
+                const init = async () => {
+                    if (window.fb_auth) {
+                        try { await window.fb_signIn(window.fb_auth); } catch (e) { setErrorMsg("Bağlantı Hatası!"); }
                     }
                 };
-                initAuth();
-                if (window.onAuthStateChanged && window.auth) {
-                    return window.onAuthStateChanged(window.auth, (u) => setUser(u));
+                init();
+                if (window.fb_onAuth && window.fb_auth) {
+                    return window.fb_onAuth(window.fb_auth, (u) => setUser(u));
                 }
             }, []);
 
             useEffect(() => {
-                if (!user || !window.db) return;
-                const getRef = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
+                if (!user || !window.fb_db) return;
+                const getRef = (n) => window.fb_doc(window.fb_db, 'artifacts', window.fb_appId, 'public', 'data', n, 'status');
 
-                const unsubSera = window.onSnapshot(getRef('greenhouse'), (d) => {
-                    if (d.exists()) setGreenhouseData(d.data());
-                });
-
-                const unsubParking = window.onSnapshot(getRef('parking'), (d) => {
-                    if (d.exists()) setParkingData(d.data());
-                });
-
-                const unsubHome = window.onSnapshot(getRef('home'), (d) => {
+                const unsubSera = window.fb_onSnapshot(getRef('greenhouse'), (d) => d.exists() && setGreenhouseData(d.data()));
+                const unsubParking = window.fb_onSnapshot(getRef('parking'), (d) => d.exists() && setParkingData(d.data()));
+                const unsubHome = window.fb_onSnapshot(getRef('home'), (d) => {
                     if (d.exists()) setHomeData(d.data());
-                    else window.setDoc(getRef('home'), { light: false, kitchen: false, plug: false, ac: false, garden: false }, { merge: true });
+                    else window.fb_setDoc(getRef('home'), { light: false, kitchen: false, plug: false, ac: false, garden: false }, { merge: true });
                 });
 
                 return () => { unsubSera(); unsubParking(); unsubHome(); };
             }, [user]);
 
-            const handleLogin = () => {
-                const code = passcode.trim();
-                if (code === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
-                else if (code === '5678') { setActiveProject('parking'); setIsAuth(true); }
-                else if (code === '0000') { setActiveProject('home'); setIsAuth(true); }
-                else { alert("Hatalı PIN!"); setPasscode(''); }
-            };
-
             const toggleCommand = async (proj, field, currentVal) => {
-                if (loading || !user) return;
+                if (loading || !user || !window.fb_setDoc) return;
                 setLoading(true);
+                setErrorMsg('');
                 try {
                     const nextVal = !currentVal;
-                    const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
-                    await window.setDoc(ref, { [field]: nextVal }, { merge: true });
+                    const ref = window.fb_doc(window.fb_db, 'artifacts', window.fb_appId, 'public', 'data', proj, 'status');
+                    await window.fb_setDoc(ref, { [field]: nextVal }, { merge: true });
                 } catch (err) {
-                    setErrorMsg("Komut gönderilemedi!");
+                    setErrorMsg("Komut iletilemedi!");
                 } finally {
                     setLoading(false);
                 }
+            };
+
+            const handleLogin = () => {
+                const c = passcode.trim();
+                if (c === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
+                else if (c === '5678') { setActiveProject('parking'); setIsAuth(true); }
+                else if (c === '0000') { setActiveProject('home'); setIsAuth(true); }
+                else { alert("Hatalı PIN!"); setPasscode(''); }
             };
 
             if (!isAuth) {
                 return (
                     <div className="min-h-screen flex items-center justify-center p-6 bg-main">
                         <div className="w-full max-w-sm glass-card rounded-[48px] p-10 shadow-2xl text-center">
-                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30">
+                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
                                 <Icon name="shield-check" className="text-white" size={40} />
                             </div>
-                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase leading-none text-nowrap">IOT MASTER</h1>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Giriş Yapın</p>
-                            
-                            <div className="space-y-4">
-                                <input 
-                                    type="text" 
-                                    inputMode="numeric"
-                                    value={passcode} 
-                                    onChange={(e) => setPasscode(e.target.value)}
-                                    placeholder="PIN" 
-                                    className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500"
-                                />
-                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact">BAĞLAN</button>
-                            </div>
+                            <h1 className="text-3xl font-black text-white mb-2 uppercase leading-none">IOT MASTER</h1>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">GİRİŞ YAPIN</p>
+                            <input 
+                                type="text" inputMode="numeric" value={passcode} 
+                                onChange={(e) => setPasscode(e.target.value)}
+                                placeholder="PIN" className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none mb-4"
+                            />
+                            <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact">BAĞLAN</button>
                         </div>
                     </div>
                 );
             }
+
+            const homeControls = [
+                { id: 'light', label: 'Salon Işığı (ESP LED)', icon: 'zap', color: 'bg-yellow-400', text: 'text-yellow-950' },
+                { id: 'kitchen', label: 'Mutfak Işığı', icon: 'utensils', color: 'bg-blue-400', text: 'text-blue-950' },
+                { id: 'plug', label: 'Akıllı Priz', icon: 'power', color: 'bg-emerald-400', text: 'text-emerald-950' },
+                { id: 'ac', label: 'Klima Sistemi', icon: 'snowflake', color: 'bg-cyan-400', text: 'text-cyan-950' },
+                { id: 'garden', label: 'Bahçe Aydınlatma', icon: 'sun', color: 'bg-orange-400', text: 'text-orange-950' }
+            ];
 
             return (
                 <div className="min-h-screen bg-main flex flex-col pb-24 overflow-y-auto">
@@ -188,50 +175,45 @@
                     </header>
                     
                     <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
-                        {errorMsg && (
-                            <div className="bg-red-500/20 border border-red-500 text-red-500 p-4 rounded-2xl text-center text-xs font-bold animate-pulse">
-                                {errorMsg}
-                            </div>
-                        )}
+                        {errorMsg && <div className="bg-red-500/20 border border-red-500 text-red-500 p-4 rounded-2xl text-center text-xs font-bold">{errorMsg}</div>}
 
                         {activeProject === 'greenhouse' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 text-center">
+                            <div className="space-y-6 animate-in fade-in duration-500">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="glass-card p-8 rounded-[40px]">
+                                    <div className="glass-card p-8 rounded-[40px] text-center">
                                         <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white">{greenhouseData.temp || 0}°</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Sıcaklık</p>
+                                        <span className="text-4xl font-black text-white">{greenhouseData?.temp || 0}°</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">Sıcaklık</p>
                                     </div>
-                                    <div className="glass-card p-8 rounded-[40px]">
+                                    <div className="glass-card p-8 rounded-[40px] text-center">
                                         <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
-                                        <span className="text-4xl font-black text-white">%{greenhouseData.hum || 0}</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Nem</p>
+                                        <span className="text-4xl font-black text-white">%{greenhouseData?.hum || 0}</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">Nem</p>
                                     </div>
                                 </div>
                                 <button 
-                                    disabled={loading}
-                                    onClick={() => toggleCommand('greenhouse', 'fan', greenhouseData.fan)} 
-                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
+                                    onClick={() => toggleCommand('greenhouse', 'fan', !!greenhouseData?.fan)} 
+                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData?.fan ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <Icon name="wind" className={greenhouseData.fan ? 'animate-spin' : ''} size={24} />
-                                        <span>HAVALANDIRMA</span>
+                                        <Icon name="wind" className={greenhouseData?.fan ? 'animate-spin' : ''} size={24} />
+                                        <span>HAVALANDIRMA SİSTEMİ</span>
                                     </div>
-                                    <span className="text-xs font-bold">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
+                                    <span className="text-xs">{greenhouseData?.fan ? 'AÇIK' : 'KAPALI'}</span>
                                 </button>
                             </div>
                         )}
 
                         {activeProject === 'parking' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6 text-center">
-                                <div className="glass-card p-12 rounded-[56px] relative overflow-hidden">
+                            <div className="animate-in fade-in duration-500">
+                                <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
                                     <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
                                     <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">GÜNCEL DURUM</p>
                                     <div className="flex items-center justify-center gap-6 relative">
-                                        <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied || 0}</h3>
+                                        <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">{parkingData?.occupied || 0}</h3>
                                         <div className="text-left leading-none">
                                             <p className="text-3xl font-black text-slate-700 italic">/ 4</p>
-                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ VAR</p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ</p>
                                         </div>
                                     </div>
                                 </div>
@@ -239,35 +221,31 @@
                         )}
 
                         {activeProject === 'home' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
+                            <div className="space-y-4 animate-in fade-in duration-500">
                                 <div className="bg-gradient-to-br from-indigo-900/60 to-slate-900 p-8 rounded-[48px] shadow-2xl border border-white/5 text-center">
                                     <h3 className="text-xl font-black mb-1 uppercase italic text-indigo-400">EV KONTROL ÜSSÜ</h3>
                                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Sistem Güvenliği Aktif</p>
                                 </div>
-                                
                                 <div className="space-y-3">
-                                    {[
-                                        { id: 'light', label: 'Salon Işığı (ESP TEST)', icon: 'zap', activeColor: 'bg-yellow-400', textColor: 'text-yellow-950', dotColor: 'bg-yellow-600' },
-                                        { id: 'kitchen', label: 'Mutfak Işığı', icon: 'utensils', activeColor: 'bg-blue-400', textColor: 'text-blue-950', dotColor: 'bg-blue-600' },
-                                        { id: 'plug', label: 'Akıllı Priz', icon: 'power', activeColor: 'bg-emerald-400', textColor: 'text-emerald-950', dotColor: 'bg-emerald-600' },
-                                        { id: 'ac', label: 'Klima Sistemi', icon: 'snowflake', activeColor: 'bg-cyan-400', textColor: 'text-cyan-950', dotColor: 'bg-cyan-600' },
-                                        { id: 'garden', label: 'Bahçe Aydınlatma', icon: 'sun', activeColor: 'bg-orange-400', textColor: 'text-orange-950', dotColor: 'bg-orange-600' }
-                                    ].map((item) => (
-                                        <button 
-                                            key={item.id}
-                                            disabled={loading}
-                                            onClick={() => toggleCommand('home', item.id, homeData[item.id])} 
-                                            className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData[item.id] ? `${item.activeColor} ${item.textColor} shadow-lg border-transparent` : 'bg-slate-800 text-slate-400 border-white/5'}`}
-                                        >
-                                            <div className="flex items-center gap-5">
-                                                <Icon name={item.icon} size={28} />
-                                                <span className="text-lg uppercase italic tracking-tighter">{item.label}</span>
-                                            </div>
-                                            <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData[item.id] ? 'bg-white/20' : 'bg-slate-700'}`}>
-                                                <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData[item.id] ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                                            </div>
-                                        </button>
-                                    ))}
+                                    {homeControls.map((item) => {
+                                        const isAct = !!homeData?.[item.id];
+                                        return (
+                                            <button 
+                                                key={item.id}
+                                                disabled={loading}
+                                                onClick={() => toggleCommand('home', item.id, isAct)} 
+                                                className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${isAct ? `${item.color} ${item.text} border-transparent` : 'bg-slate-800 text-slate-400 border-white/5'}`}
+                                            >
+                                                <div className="flex items-center gap-5">
+                                                    <Icon name={item.icon} size={28} />
+                                                    <span className="text-lg uppercase italic tracking-tighter">{item.label}</span>
+                                                </div>
+                                                <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${isAct ? 'bg-black/20' : 'bg-slate-700'}`}>
+                                                    <div className={`w-5 h-5 bg-white rounded-full transition-all ${isAct ? 'translate-x-5' : 'translate-x-0'}`}></div>
+                                                </div>
+                                            </button>
+                                        );
+                                    })}
                                 </div>
                             </div>
                         )}
@@ -276,7 +254,7 @@
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
                         {loading ? <span className="loader"></span> : <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />}
                         <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
-                            {loading ? 'İŞLENİYOR' : 'CANLI BULUT BAĞLANTISI'}
+                            {loading ? 'VERİ GÖNDERİLİYOR' : 'CANLI BULUT BAĞLANTISI'}
                         </span>
                     </div>
                 </div>

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IOT Master | Kontrol Merkezi</title>
+    <title>IOT Master | Global Kontrol Merkezi</title>
     <!-- Stil ve İkon Kütüphaneleri -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
@@ -33,7 +33,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global erişim
+        // Global köprüleme
         window.db = db;
         window.auth = auth;
         window.customAppId = customAppId;
@@ -46,26 +46,27 @@
     </script>
     
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; }
-        .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .animate-pulse-slow { animation: pulse 3s infinite; }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        body { font-family: 'Inter', sans-serif; background-color: #020617; color: #f8fafc; }
+        .glass { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-active { background: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.4); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; }
+        /* Mobil Kaydırma Çubuğunu Gizle */
+        ::-webkit-scrollbar { display: none; }
     </style>
 </head>
-<body class="text-slate-200">
+<body>
     <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // İkon Bileşeni: Lucide ikonlarını güvenli render eder
-        const Icon = ({ name, className, size = 24 }) => {
+        // İkon Helper: Lucide ikonlarını güvenle oluşturur
+        const Icon = ({ name, size = 24, className = "" }) => {
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
             }, [name]);
-            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
         };
 
         function App() {
@@ -74,75 +75,80 @@
             const [passcode, setPasscode] = useState('');
             const [activeProject, setActiveProject] = useState(null);
             
-            const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
-            const [parkingData, setParkingData] = useState({ occupied: 0 });
-            const [homeData, setHomeData] = useState({ light: false });
+            // Canlı Veriler
+            const [greenhouse, setGreenhouse] = useState({ temp: 24, hum: 55, fan: false });
+            const [parking, setParking] = useState({ occupied: 0, slots: [false, false, false, false] });
+            const [home, setHome] = useState({ light: false, security: true });
 
+            // 1. Auth Başlatma
             useEffect(() => {
-                const initAuth = async () => {
+                const init = async () => {
                     try {
                         if (window.auth) await window.signInAnonymously(window.auth);
-                    } catch (e) { console.error("Auth hatası:", e); }
+                    } catch (e) { console.error("Firebase Hatası:", e); }
                 };
-                initAuth();
+                init();
                 if (window.onAuthStateChanged && window.auth) {
                     return window.onAuthStateChanged(window.auth, setUser);
                 }
             }, []);
 
+            // 2. Proje Verilerini Dinleme
             useEffect(() => {
                 if (!user || !window.db) return;
-                const path = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
+                
+                const getRef = (proj) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
 
-                const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
-                    if (d.exists()) setGreenhouseData(d.data());
-                    else window.setDoc(path('greenhouse'), { temp: 24, hum: 55, fan: false });
+                const unsubGreen = window.onSnapshot(getRef('greenhouse'), (d) => {
+                    if (d.exists()) setGreenhouse(d.data());
+                    else window.setDoc(getRef('greenhouse'), { temp: 24, hum: 50, fan: false });
                 });
 
-                const unsubParking = window.onSnapshot(path('parking'), (d) => {
-                    if (d.exists()) setParkingData(d.data());
-                    else window.setDoc(path('parking'), { occupied: 0 });
+                const unsubPark = window.onSnapshot(getRef('parking'), (d) => {
+                    if (d.exists()) setParking(d.data());
+                    else window.setDoc(getRef('parking'), { occupied: 0, slots: [false, false, false, false] });
                 });
 
-                const unsubHome = window.onSnapshot(path('home'), (d) => {
-                    if (d.exists()) setHomeData(d.data());
-                    else window.setDoc(path('home'), { light: false });
+                const unsubHome = window.onSnapshot(getRef('home'), (d) => {
+                    if (d.exists()) setHome(d.data());
+                    else window.setDoc(getRef('home'), { light: false, security: true });
                 });
 
-                return () => { unsubSera(); unsubParking(); unsubHome(); };
+                return () => { unsubGreen(); unsubPark(); unsubHome(); };
             }, [user]);
 
             const handleLogin = () => {
                 if (passcode === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
                 else if (passcode === '5678') { setActiveProject('parking'); setIsAuth(true); }
                 else if (passcode === '0000') { setActiveProject('home'); setIsAuth(true); }
-                else { alert("Hatalı PIN!"); setPasscode(''); }
+                else { alert("Yanlış PIN!"); setPasscode(''); }
             };
 
-            const toggleCommand = async (proj, field, val) => {
+            const sendCommand = async (proj, field, val) => {
                 const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
                 await window.updateDoc(ref, { [field]: val });
             };
 
+            // GİRİŞ EKRANI
             if (!isAuth) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center p-6 bg-main">
-                        <div className="w-full max-w-sm glass-card rounded-[48px] p-10 shadow-2xl text-center">
-                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30">
+                    <div className="min-h-screen flex items-center justify-center p-6 bg-[#020617]">
+                        <div className="w-full max-w-sm glass rounded-[48px] p-10 text-center shadow-2xl">
+                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-blue-500/20 shadow-xl">
                                 <Icon name="shield-check" className="text-white" size={40} />
                             </div>
-                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase">IOT MASTER</h1>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Giriş Yapın</p>
+                            <h1 className="text-2xl font-extrabold text-white mb-2 uppercase tracking-tight">IOT MASTER</h1>
+                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-10">Güvenli Erişim Modülü</p>
                             
                             <div className="space-y-4">
                                 <input 
                                     type="password" 
                                     value={passcode} 
                                     onChange={(e) => setPasscode(e.target.value)}
-                                    placeholder="PIN KODU" 
-                                    className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500"
+                                    placeholder="PIN" 
+                                    className="w-full bg-black/40 border border-white/10 rounded-3xl py-5 text-white text-center text-4xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500 transition-all"
                                 />
-                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl active:scale-95 transition-all">SİSTEME BAĞLAN</button>
+                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-5 rounded-3xl active:scale-95 transition-all">GİRİŞ YAP</button>
                             </div>
                         </div>
                     </div>
@@ -150,80 +156,108 @@
             }
 
             return (
-                <div className="min-h-screen bg-main flex flex-col pb-24">
-                    <header className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-50">
+                <div className="min-h-screen bg-[#020617] flex flex-col pb-24">
+                    {/* Üst Bar */}
+                    <header className="p-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020617]/80 backdrop-blur-lg z-50">
                         <div className="flex items-center gap-3">
-                            <div className={`p-3 rounded-xl shadow-lg ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
-                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} className="text-white" size={24}/>
+                            <div className={`p-3 rounded-2xl ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
+                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} className="text-white" size={20} />
                             </div>
-                            <h2 className="font-black text-lg uppercase italic text-white">
-                                {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark' : 'Akıllı Ev'}
-                            </h2>
+                            <div>
+                                <h2 className="font-bold text-lg leading-none uppercase italic">
+                                    {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark Üssü' : 'Akıllı Ev'}
+                                </h2>
+                                <div className="flex items-center gap-1.5 mt-1.5">
+                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
+                                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest italic">Bulut Bağlantısı</span>
+                                </div>
+                            </div>
                         </div>
-                        <button onClick={() => setIsAuth(false)} className="p-3 bg-white/5 rounded-xl text-slate-400"><Icon name="log-out" size={20} /></button>
+                        <button onClick={() => setIsAuth(false)} className="p-3 bg-white/5 rounded-xl text-slate-400 active:scale-90"><Icon name="log-out" size={18} /></button>
                     </header>
                     
                     <main className="p-6 max-w-xl mx-auto w-full space-y-6">
+                        
+                        {/* 1. PROJE: AKILLI SERA */}
                         {activeProject === 'greenhouse' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                            <div className="animate-in fade-in duration-500 space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
+                                    <div className="glass p-8 rounded-[40px] text-center">
                                         <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white">{greenhouseData.temp}°C</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Sıcaklık</p>
+                                        <span className="text-4xl font-extrabold">{greenhouse.temp}°C</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest">Sıcaklık</p>
                                     </div>
-                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
+                                    <div className="glass p-8 rounded-[40px] text-center">
                                         <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
-                                        <span className="text-4xl font-black text-white">%{greenhouseData.hum}</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase">Hava Nemi</p>
+                                        <span className="text-4xl font-extrabold">%{greenhouse.hum}</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest">Hava Nemi</p>
                                     </div>
                                 </div>
-                                <button onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 transition-all ${greenhouseData.fan ? 'bg-emerald-600 shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}>
+                                <button 
+                                    onClick={() => sendCommand('greenhouse', 'fan', !greenhouse.fan)}
+                                    className={`w-full p-8 rounded-[40px] flex items-center justify-between px-10 transition-all ${greenhouse.fan ? 'bg-emerald-600 text-white shadow-emerald-500/20 shadow-2xl' : 'bg-white/5 text-slate-400'}`}
+                                >
                                     <div className="flex items-center gap-4">
-                                        <Icon name="wind" className={greenhouseData.fan ? 'animate-spin' : ''} size={24} />
-                                        <span>HAVALANDIRMA</span>
+                                        <Icon name="wind" size={24} className={greenhouse.fan ? 'animate-spin' : ''} />
+                                        <span className="font-bold text-sm tracking-tight uppercase">Havalandırma</span>
                                     </div>
-                                    <span className="text-xs">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
+                                    <span className="text-xs font-bold uppercase">{greenhouse.fan ? 'AÇIK' : 'KAPALI'}</span>
                                 </button>
                             </div>
                         )}
+
+                        {/* 2. PROJE: OTOPARK */}
                         {activeProject === 'parking' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                                <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
-                                    <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5 animate-pulse-slow" size={200} />
-                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Doluluk Durumu</p>
+                            <div className="animate-in fade-in duration-500 space-y-6">
+                                <div className="glass p-12 rounded-[56px] text-center relative overflow-hidden">
+                                    <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.5em] mb-4">Doluluk Oranı</p>
                                     <div className="flex items-center justify-center gap-6 relative">
-                                        <h3 className="text-[9rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied}</h3>
+                                        <h3 className="text-[9rem] font-extrabold tracking-tighter leading-none text-white">{parking.occupied}</h3>
                                         <div className="text-left leading-none">
-                                            <p className="text-3xl font-black text-slate-700 italic">/ 4</p>
-                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ</p>
+                                            <p className="text-4xl font-extrabold text-slate-700 italic">/ 4</p>
+                                            <p className="text-[10px] font-bold text-orange-500 uppercase mt-4 tracking-widest">ARAÇ İÇERİDE</p>
                                         </div>
                                     </div>
                                 </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {parking.slots.map((isDolu, i) => (
+                                        <div key={i} className={`p-8 rounded-[40px] flex flex-col items-center gap-4 border-2 transition-all ${isDolu ? 'border-red-500 bg-red-500/5' : 'border-white/5 opacity-30'}`}>
+                                            <Icon name="car" size={32} className={isDolu ? 'text-red-500' : 'text-slate-600'} />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest">SLOT {i+1}</span>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         )}
+
+                        {/* 3. PROJE: AKILLI EV */}
                         {activeProject === 'home' && (
-                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                            <div className="animate-in fade-in duration-500 space-y-6">
                                 <div className="bg-indigo-900/40 p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5 text-center">
-                                    <Icon name="shield-check" size={100} className="absolute -right-8 -bottom-8 opacity-10" />
-                                    <h3 className="text-2xl font-black mb-2 uppercase italic text-indigo-400">Akıllı Konut</h3>
-                                    <p className="text-slate-400 text-sm font-medium">Sistem güvenliği aktif.</p>
+                                    <Icon name="shield-check" size={80} className="absolute -right-8 -bottom-8 opacity-10" />
+                                    <h3 className="text-2xl font-extrabold mb-2 uppercase italic text-indigo-400">Akıllı Konut</h3>
+                                    <p className="text-slate-400 text-sm font-medium">Uzaktan kontrol aktif edildi.</p>
                                 </div>
-                                <button onClick={() => toggleCommand('home', 'light', !homeData.light)} className={`w-full p-10 rounded-[44px] font-black flex items-center justify-between px-10 transition-all ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}>
+                                <button 
+                                    onClick={() => sendCommand('home', 'light', !home.light)}
+                                    className={`w-full p-10 rounded-[44px] flex items-center justify-between px-10 transition-all ${home.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-white/5 text-slate-400'}`}
+                                >
                                     <div className="flex items-center gap-6">
-                                        <Icon name="zap" className={homeData.light ? 'rotate-12' : ''} size={36} />
-                                        <span className="text-xl uppercase italic">Salon Işığı</span>
+                                        <Icon name="zap" size={32} className={home.light ? 'rotate-12' : ''} />
+                                        <span className="text-xl font-bold uppercase tracking-tighter">Salon Işığı</span>
                                     </div>
-                                    <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
-                                        <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                    <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${home.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
+                                        <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${home.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
                                     </div>
                                 </button>
                             </div>
                         )}
                     </main>
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
+
+                    {/* Alt Bilgi */}
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
                         <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest italic">Senkronizasyon Aktif</span>
+                        <span className="text-[10px] font-bold text-white uppercase tracking-widest italic">Anlık Senkronizasyon</span>
                     </div>
                 </div>
             );

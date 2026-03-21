@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IOT Master | Kontrol Merkezi</title>
+    <!-- Stil ve İkon Kütüphaneleri -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React ve Firebase Kütüphaneleri -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Senin sağladığın gerçek Firebase yapılandırması
+        const firebaseConfig = {
+            apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
+            authDomain: "akillisera-b71d4.firebaseapp.com",
+            databaseURL: "https://akillisera-b71d4-default-rtdb.firebaseio.com",
+            projectId: "akillisera-b71d4",
+            storageBucket: "akillisera-b71d4.firebasestorage.app",
+            messagingSenderId: "326483167364",
+            appId: "1:326483167364:web:77623670ecad58db099ad1",
+            measurementId: "G-NNJK2RKKDG"
+        };
+
+        const customAppId = "master-iot-final-v2"; 
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global erişim (React Script'i ile haberleşmek için)
+        window.db = db;
+        window.auth = auth;
+        window.customAppId = customAppId;
+        window.signInAnonymously = signInAnonymously;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.onSnapshot = onSnapshot;
+        window.updateDoc = updateDoc;
+        window.setDoc = setDoc;
+        window.doc = doc;
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .bg-main { background: radial-gradient(circle at top right, #111827, #000000); }
+        .glass-card { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+    </style>
+</head>
+<body class="bg-[#020617] text-slate-200 min-h-screen">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // İkon Bileşeni (Lucide ikonlarını React içinde güvenli kullanmak için)
+        const Icon = ({ name, className, size = 24 }) => {
+            useEffect(() => {
+                if (window.lucide) {
+                    window.lucide.createIcons();
+                }
+            }, [name]);
+            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+        };
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [isAuth, setIsAuth] = useState(false);
+            const [passcode, setPasscode] = useState('');
+            const [activeProject, setActiveProject] = useState(null);
+            
+            const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
+            const [parkingData, setParkingData] = useState({ slots: [false, false, false, false], occupied: 0 });
+            const [homeData, setHomeData] = useState({ light: false });
+
+            useEffect(() => {
+                const initAuth = async () => {
+                    try {
+                        if (window.auth) {
+                            await window.signInAnonymously(window.auth);
+                        }
+                    } catch (e) {
+                        console.error("Bağlantı Hatası:", e);
+                    }
+                };
+                initAuth();
+                if (window.onAuthStateChanged && window.auth) {
+                    return window.onAuthStateChanged(window.auth, setUser);
+                }
+            }, []);
+
+            useEffect(() => {
+                if (!user || !window.db) return;
+                
+                const path = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
+
+                const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
+                    if (d.exists()) setGreenhouseData(d.data());
+                    else window.setDoc(path('greenhouse'), { temp: 24, hum: 60, fan: false });
+                });
+
+                const unsubParking = window.onSnapshot(path('parking'), (d) => {
+                    if (d.exists()) setParkingData(d.data());
+                    else window.setDoc(path('parking'), { slots: [false, false, false, false], occupied: 0 });
+                });
+
+                const unsubHome = window.onSnapshot(path('home'), (d) => {
+                    if (d.exists()) setHomeData(d.data());
+                    else window.setDoc(path('home'), { light: false });
+                });
+
+                return () => { unsubSera(); unsubParking(); unsubHome(); };
+            }, [user]);
+
+            const handleLogin = () => {
+                if (passcode === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
+                else if (passcode === '5678') { setActiveProject('parking'); setIsAuth(true); }
+                else if (passcode === '0000') { setActiveProject('home'); setIsAuth(true); }
+                else { alert("PIN Hatalı!"); setPasscode(''); }
+            };
+
+            const toggleCommand = async (proj, field, val) => {
+                const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
+                await window.updateDoc(ref, { [field]: val, lastAction: new Date() });
+            };
+
+            if (!isAuth) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-6 bg-main">
+                        <div className="w-full max-w-sm glass-card rounded-[48px] p-10 shadow-2xl text-center border border-white/10">
+                            <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/20 -rotate-3">
+                                <Icon name="shield-check" className="text-white" size={48} />
+                            </div>
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tight uppercase leading-none">IOT MASTER</h1>
+                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-12 italic">Güvenli Erişim Paneli</p>
+                            
+                            <div className="space-y-4">
+                                <input 
+                                    type="password" 
+                                    value={passcode} 
+                                    onChange={(e) => setPasscode(e.target.value)}
+                                    placeholder="PIN KODU" 
+                                    className="w-full bg-white/5 border border-white/10 rounded-3xl py-6 px-6 text-white text-center text-4xl tracking-[0.5em] focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-800 placeholder:tracking-normal placeholder:text-sm"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                                />
+                                
+                                <button 
+                                    onClick={handleLogin} 
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-6 rounded-3xl transition-all shadow-xl shadow-blue-600/30 flex items-center justify-center gap-3 active:scale-95"
+                                >
+                                    SİSTEME GİRİŞ YAP <Icon name="chevron-right" size={20} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen flex flex-col pb-24">
+                    <header className="bg-slate-900/50 backdrop-blur-xl border-b border-white/5 px-6 py-6 flex justify-between items-center sticky top-0 z-50">
+                        <div className="flex items-center gap-4">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-2xl ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
+                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} size={26}/>
+                            </div>
+                            <div>
+                                <h2 className="font-black text-xl uppercase tracking-tighter leading-none italic text-white">
+                                    {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark Üssü' : 'Akıllı Ev'}
+                                </h2>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full animate-pulse"></div>
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest italic">Bulut Bağlantısı Aktif</p>
+                                </div>
+                            </div>
+                        </div>
+                        <button 
+                            onClick={() => {setIsAuth(false); setActiveProject(null); setPasscode('');}} 
+                            className="w-12 h-12 flex items-center justify-center rounded-2xl bg-white/5 text-slate-400 hover:text-red-500 transition-all active:scale-90"
+                        >
+                            <Icon name="log-out" size={22} />
+                        </button>
+                    </header>
+                    
+                    <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
+                        {activeProject === 'greenhouse' && (
+                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="glass-card p-8 rounded-[40px] text-center">
+                                        <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
+                                        <span className="text-4xl font-black text-white leading-none">{greenhouseData.temp}°C</span>
+                                        <p className="text-[10px] font-black text-slate-500 mt-3 uppercase tracking-widest italic">İç Sıcaklık</p>
+                                    </div>
+                                    <div className="glass-card p-8 rounded-[40px] text-center">
+                                        <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
+                                        <span className="text-4xl font-black text-white leading-none">%{greenhouseData.hum}</span>
+                                        <p className="text-[10px] font-black text-slate-500 mt-3 uppercase tracking-widest italic">Nem Oranı</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 transition-all ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-2xl shadow-emerald-500/20' : 'bg-white/5 text-slate-400'}`}>
+                                    <div className="flex items-center gap-4">
+                                        <Icon name="wind" size={24} className={greenhouseData.fan ? 'animate-spin' : ''} />
+                                        <span className="italic tracking-tighter">FAN SİSTEMİ</span>
+                                    </div>
+                                    <span className="text-xs font-bold uppercase">{greenhouseData.fan ? 'AKTİF' : 'KAPALI'}</span>
+                                </button>
+                            </div>
+                        )}
+                        {activeProject === 'parking' && (
+                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
+                                <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
+                                    <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
+                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Otopark Doluluk</p>
+                                    <div className="flex items-center justify-center gap-6 relative">
+                                        <h3 className="text-[10rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied}</h3>
+                                        <div className="text-left leading-none">
+                                            <p className="text-4xl font-black text-slate-700 italic">/ 4</p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                        {activeProject === 'home' && (
+                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
+                                <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[48px] p-10 text-white shadow-2xl relative overflow-hidden border border-white/5 text-center">
+                                    <Icon name="shield-check" size={120} className="absolute -right-12 -bottom-12 opacity-5" />
+                                    <h3 className="text-2xl font-black mb-2 flex items-center justify-center gap-3 tracking-tighter uppercase italic leading-none"><Icon name="zap" className="text-indigo-400" /> AKILLI KONUT</h3>
+                                    <p className="text-indigo-300/60 text-sm mt-3 font-medium">Güvenlik ve otomasyon aktif.</p>
+                                </div>
+                                <button 
+                                    onClick={() => toggleCommand('home', 'light', !homeData.light)} 
+                                    className={`w-full p-10 rounded-[44px] flex items-center justify-between transition-all group ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-2xl shadow-yellow-400/20' : 'bg-white/5 text-slate-400 border border-white/5'}`}
+                                >
+                                    <div className="font-black block text-xl tracking-tighter uppercase leading-none text-left italic">Salon Işığı</div>
+                                    <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
+                                        <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                    </div>
+                                </button>
+                            </div>
+                        )}
+                    </main>
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur shadow-2xl px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40 transition-all hover:scale-105 active:scale-95">
+                        <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest italic">Senkronizasyon Aktif</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

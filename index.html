@@ -15,7 +15,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc, updateDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
@@ -33,7 +33,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global erişim
+        // Global erişim için window nesnesine ekliyoruz
         window.db = db;
         window.auth = auth;
         window.customAppId = customAppId;
@@ -41,6 +41,7 @@
         window.onAuthStateChanged = onAuthStateChanged;
         window.onSnapshot = onSnapshot;
         window.setDoc = setDoc;
+        window.updateDoc = updateDoc;
         window.doc = doc;
     </script>
     
@@ -71,6 +72,7 @@
             const [isAuth, setIsAuth] = useState(false);
             const [passcode, setPasscode] = useState('');
             const [activeProject, setActiveProject] = useState(null);
+            const [isPending, setIsPending] = useState(false);
             
             const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
             const [parkingData, setParkingData] = useState({ occupied: 0 });
@@ -92,17 +94,25 @@
                 if (!user || !window.db) return;
                 const path = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
 
+                // Sera Verilerini Dinle
                 const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
                     if (d.exists()) setGreenhouseData(d.data());
-                });
+                }, (err) => console.error("Sera Dinleme Hatası:", err));
 
+                // Otopark Verilerini Dinle
                 const unsubParking = window.onSnapshot(path('parking'), (d) => {
                     if (d.exists()) setParkingData(d.data());
-                });
+                }, (err) => console.error("Otopark Dinleme Hatası:", err));
 
+                // Akıllı Ev Verilerini Dinle
                 const unsubHome = window.onSnapshot(path('home'), (d) => {
-                    if (d.exists()) setHomeData(d.data());
-                });
+                    if (d.exists()) {
+                        setHomeData(d.data());
+                    } else {
+                        // Eğer döküman yoksa başlangıç değerini oluştur
+                        window.setDoc(path('home'), { light: false }, { merge: true });
+                    }
+                }, (err) => console.error("Ev Dinleme Hatası:", err));
 
                 return () => { unsubSera(); unsubParking(); unsubHome(); };
             }, [user]);
@@ -115,12 +125,20 @@
             };
 
             const toggleCommand = async (proj, field, val) => {
+                if (isPending) return;
+                setIsPending(true);
                 try {
                     const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
-                    // setDoc ile merge: true kullanarak hem oluşturur hem günceller
+                    console.log(`Komut Gönderiliyor: ${proj} -> ${field} = ${val}`);
+                    
+                    // setDoc with merge: true hem dökümanı oluşturur hem günceller
                     await window.setDoc(ref, { [field]: val }, { merge: true });
+                    console.log("Komut Başarıyla Gönderildi!");
                 } catch (err) {
                     console.error("Gonderim Hatası:", err);
+                    alert("Veri gönderilemedi: " + err.message);
+                } finally {
+                    setIsPending(false);
                 }
             };
 
@@ -131,8 +149,8 @@
                             <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30">
                                 <Icon name="shield-check" className="text-white" size={40} />
                             </div>
-                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase">IOT MASTER</h1>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Giriş Yapın</p>
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase leading-none">IOT MASTER</h1>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Sisteme Giriş Yapın</p>
                             
                             <div className="space-y-4">
                                 <input 
@@ -141,8 +159,14 @@
                                     onChange={(e) => setPasscode(e.target.value)}
                                     placeholder="PIN KODU" 
                                     className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500"
+                                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
                                 />
-                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact">SİSTEME BAĞLAN</button>
+                                <button 
+                                    onClick={handleLogin} 
+                                    className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact"
+                                >
+                                    SİSTEME BAĞLAN
+                                </button>
                             </div>
                         </div>
                     </div>
@@ -160,41 +184,45 @@
                                 {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark' : 'Akıllı Ev'}
                             </h2>
                         </div>
-                        <button onClick={() => setIsAuth(false)} className="p-3 bg-white/5 rounded-xl text-slate-400 btn-interact"><Icon name="log-out" size={20} /></button>
+                        <button onClick={() => {setIsAuth(false); setPasscode('');}} className="p-3 bg-white/5 rounded-xl text-slate-400 btn-interact"><Icon name="log-out" size={20} /></button>
                     </header>
                     
                     <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
+                        {/* SERA PANELİ */}
                         {activeProject === 'greenhouse' && (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
                                         <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
                                         <span className="text-4xl font-black text-white">{greenhouseData.temp || 0}°C</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest">Sıcaklık</p>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">İç Sıcaklık</p>
                                     </div>
                                     <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
                                         <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
                                         <span className="text-4xl font-black text-white">%{greenhouseData.hum || 0}</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest">Nem</p>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">Nem Oranı</p>
                                     </div>
                                 </div>
                                 <button 
+                                    disabled={isPending}
                                     onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} 
-                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData.fan ? 'bg-emerald-600 shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
+                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${isPending ? 'opacity-50' : ''} ${greenhouseData.fan ? 'bg-emerald-600 shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
                                 >
                                     <div className="flex items-center gap-4">
                                         <Icon name="wind" className={greenhouseData.fan ? 'animate-spin' : ''} size={24} />
-                                        <span>HAVALANDIRMA</span>
+                                        <span className="italic uppercase">Fan Sistemi</span>
                                     </div>
-                                    <span className="text-xs">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
+                                    <span className="text-xs font-bold">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'} {isPending && '...'}</span>
                                 </button>
                             </div>
                         )}
+
+                        {/* OTOPARK PANELİ */}
                         {activeProject === 'parking' && (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                 <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
                                     <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
-                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Otopark Durumu</p>
+                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Mevcut Doluluk</p>
                                     <div className="flex items-center justify-center gap-6 relative">
                                         <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied || 0}</h3>
                                         <div className="text-left leading-none">
@@ -205,16 +233,19 @@
                                 </div>
                             </div>
                         )}
+
+                        {/* AKILLI EV PANELİ */}
                         {activeProject === 'home' && (
                             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
-                                <div className="bg-indigo-900/40 p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5 text-center">
+                                <div className="bg-gradient-to-br from-indigo-900/60 to-slate-900 p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5 text-center">
                                     <Icon name="shield-check" size={100} className="absolute -right-8 -bottom-8 opacity-10" />
-                                    <h3 className="text-2xl font-black mb-2 uppercase italic text-indigo-400 leading-none">Akıllı Konut</h3>
-                                    <p className="text-slate-400 text-sm font-medium mt-2">Sistem güvenliği aktif.</p>
+                                    <h3 className="text-2xl font-black mb-2 uppercase italic text-indigo-400 leading-none">Akıllı Kontrol</h3>
+                                    <p className="text-slate-400 text-sm font-medium mt-2">Ev güvenliği ve aydınlatma aktif.</p>
                                 </div>
                                 <button 
+                                    disabled={isPending}
                                     onClick={() => toggleCommand('home', 'light', !homeData.light)} 
-                                    className={`w-full p-10 rounded-[44px] font-black flex items-center justify-between px-10 btn-interact ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
+                                    className={`w-full p-10 rounded-[44px] font-black flex items-center justify-between px-10 btn-interact ${isPending ? 'opacity-50' : ''} ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400 border border-white/5'}`}
                                 >
                                     <div className="flex items-center gap-6">
                                         <Icon name="zap" className={homeData.light ? 'rotate-12 text-yellow-950' : 'text-slate-400'} size={36} />
@@ -224,12 +255,14 @@
                                         <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
                                     </div>
                                 </button>
+                                {isPending && <p className="text-center text-[10px] text-blue-400 font-bold uppercase animate-pulse">Buluta yazılıyor...</p>}
                             </div>
                         )}
                     </main>
+
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
                         <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest italic leading-none">Senkronizasyon Aktif</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest italic leading-none">Bulut Senkronizasyonu Aktif</span>
                     </div>
                 </div>
             );

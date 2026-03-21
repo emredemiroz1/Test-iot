@@ -3,10 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IOT Master | Merkezi Kontrol</title>
-    <!-- Modern Stil ve Kütüphaneler -->
+    <title>IOT Master | Kontrol Merkezi</title>
+    <!-- Stil ve İkon Kütüphaneleri -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React ve Firebase Kütüphaneleri -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -14,7 +15,7 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
         const firebaseConfig = {
             apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
@@ -27,55 +28,42 @@
             measurementId: "G-NNJK2RKKDG"
         };
 
+        const customAppId = "master-iot-final-v2"; 
         const app = initializeApp(firebaseConfig);
-        window.fbAuth = getAuth(app);
-        window.fbDb = getFirestore(app);
-        window.fbDoc = doc;
-        window.fbOnSnapshot = onSnapshot;
-        window.fbUpdateDoc = updateDoc;
-        window.fbSetDoc = setDoc;
-        window.fbSignIn = signInAnonymously;
-        window.fbOnAuth = onAuthStateChanged;
-        window.customAppId = "master-iot-final-v2";
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global erişim
+        window.db = db;
+        window.auth = auth;
+        window.customAppId = customAppId;
+        window.signInAnonymously = signInAnonymously;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.onSnapshot = onSnapshot;
+        window.setDoc = setDoc;
+        window.doc = doc;
     </script>
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #020617; 
-            color: #f8fafc;
-            margin: 0;
-            padding: 0;
-        }
-        .glass-panel { 
-            background: rgba(15, 23, 42, 0.8); 
-            backdrop-filter: blur(12px); 
-            border: 1px solid rgba(255, 255, 255, 0.1); 
-        }
-        .proje-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .proje-card:active { transform: scale(0.95); }
+        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; }
+        .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
+        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .btn-interact { cursor: pointer; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+        .btn-interact:active { transform: scale(0.95); opacity: 0.8; }
     </style>
 </head>
-<body>
-    <div id="root">
-        <!-- React yüklenene kadar görünen alan -->
-        <div class="flex items-center justify-center min-h-screen">
-            <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-blue-500"></div>
-        </div>
-    </div>
+<body class="text-slate-200">
+    <div id="root"></div>
 
     <script type="text/babel">
         const { useState, useEffect } = React;
 
-        // İkon Bileşeni
-        const Icon = ({ name, className = "", size = 24 }) => {
+        const Icon = ({ name, className, size = 24 }) => {
             useEffect(() => {
                 if (window.lucide) window.lucide.createIcons();
             }, [name]);
-            return <i data-lucide={name} className={className} style={{ width: size, height: size }}></i>;
+            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
         };
 
         function App() {
@@ -83,89 +71,78 @@
             const [isAuth, setIsAuth] = useState(false);
             const [passcode, setPasscode] = useState('');
             const [activeProject, setActiveProject] = useState(null);
-            const [loading, setLoading] = useState(true);
             
-            // Veri Durumları
-            const [greenhouse, setGreenhouse] = useState({ temp: 24, hum: 55, fan: false });
-            const [parking, setParking] = useState({ occupied: 0, slots: [false, false, false, false] });
-            const [home, setHome] = useState({ light: false });
+            const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
+            const [parkingData, setParkingData] = useState({ occupied: 0 });
+            const [homeData, setHomeData] = useState({ light: false });
 
             useEffect(() => {
-                // Firebase kütüphanelerinin yüklenmesini bekle
-                const checkFirebase = setInterval(() => {
-                    if (window.fbAuth && window.fbSignIn) {
-                        clearInterval(checkFirebase);
-                        window.fbSignIn(window.fbAuth).catch(err => console.error("Giriş Hatası:", err));
-                        window.fbOnAuth(window.fbAuth, (u) => {
-                            setUser(u);
-                            setLoading(false);
-                        });
-                    }
-                }, 500);
-                return () => clearInterval(checkFirebase);
+                const initAuth = async () => {
+                    try {
+                        if (window.auth) await window.signInAnonymously(window.auth);
+                    } catch (e) { console.error("Auth hatası:", e); }
+                };
+                initAuth();
+                if (window.onAuthStateChanged && window.auth) {
+                    return window.onAuthStateChanged(window.auth, setUser);
+                }
             }, []);
 
             useEffect(() => {
-                if (!user || !window.fbDb) return;
-                
-                const getRef = (p) => window.fbDoc(window.fbDb, 'artifacts', window.customAppId, 'public', 'data', p, 'status');
+                if (!user || !window.db) return;
+                const path = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
 
-                const unsubSera = window.fbOnSnapshot(getRef('greenhouse'), (d) => {
-                    if (d.exists()) setGreenhouse(d.data());
-                    else window.fbSetDoc(getRef('greenhouse'), { temp: 25, hum: 60, fan: false });
+                const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
+                    if (d.exists()) setGreenhouseData(d.data());
                 });
 
-                const unsubPark = window.fbOnSnapshot(getRef('parking'), (d) => {
-                    if (d.exists()) setParking(d.data());
-                    else window.fbSetDoc(getRef('parking'), { occupied: 0, slots: [false, false, false, false] });
+                const unsubParking = window.onSnapshot(path('parking'), (d) => {
+                    if (d.exists()) setParkingData(d.data());
                 });
 
-                const unsubHome = window.fbOnSnapshot(getRef('home'), (d) => {
-                    if (d.exists()) setHome(d.data());
-                    else window.fbSetDoc(getRef('home'), { light: false });
+                const unsubHome = window.onSnapshot(path('home'), (d) => {
+                    if (d.exists()) setHomeData(d.data());
                 });
 
-                return () => { unsubSera(); unsubPark(); unsubHome(); };
+                return () => { unsubSera(); unsubParking(); unsubHome(); };
             }, [user]);
 
             const handleLogin = () => {
                 if (passcode === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
                 else if (passcode === '5678') { setActiveProject('parking'); setIsAuth(true); }
                 else if (passcode === '0000') { setActiveProject('home'); setIsAuth(true); }
-                else { alert("PIN Hatalı! (1234, 5678 veya 0000 deneyin)"); setPasscode(''); }
+                else { alert("Hatalı PIN!"); setPasscode(''); }
             };
 
-            const toggleDevice = async (proj, field, val) => {
-                const ref = window.fbDoc(window.fbDb, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
-                await window.fbUpdateDoc(ref, { [field]: val });
+            const toggleCommand = async (proj, field, val) => {
+                try {
+                    const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
+                    // setDoc ile merge: true kullanarak hem oluşturur hem günceller
+                    await window.setDoc(ref, { [field]: val }, { merge: true });
+                } catch (err) {
+                    console.error("Gonderim Hatası:", err);
+                }
             };
-
-            if (loading) return (
-                <div className="min-h-screen flex flex-col items-center justify-center bg-[#020617]">
-                    <div className="animate-spin rounded-full h-16 w-16 border-t-4 border-blue-600 mb-4"></div>
-                    <p className="text-slate-400 font-bold tracking-widest uppercase text-xs">Buluta Bağlanılıyor...</p>
-                </div>
-            );
 
             if (!isAuth) {
                 return (
-                    <div className="min-h-screen flex items-center justify-center p-6 bg-[#020617] bg-gradient-to-br from-slate-950 to-blue-950">
-                        <div className="w-full max-w-sm glass-panel rounded-[48px] p-10 text-center shadow-2xl">
-                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-xl shadow-blue-500/20">
+                    <div className="min-h-screen flex items-center justify-center p-6 bg-main">
+                        <div className="w-full max-w-sm glass-card rounded-[48px] p-10 shadow-2xl text-center">
+                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/30">
                                 <Icon name="shield-check" className="text-white" size={40} />
                             </div>
-                            <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tighter">IOT MASTER</h1>
-                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mb-10">Güvenli Erişim Paneli</p>
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tighter uppercase">IOT MASTER</h1>
+                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Giriş Yapın</p>
                             
                             <div className="space-y-4">
                                 <input 
                                     type="password" 
                                     value={passcode} 
                                     onChange={(e) => setPasscode(e.target.value)}
-                                    placeholder="PIN" 
-                                    className="w-full bg-black/40 border border-white/10 rounded-3xl py-5 text-white text-center text-4xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500 transition-all"
+                                    placeholder="PIN KODU" 
+                                    className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none focus:ring-2 focus:ring-blue-500"
                                 />
-                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl active:scale-95 transition-all shadow-lg">GİRİŞ YAP</button>
+                                <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact">SİSTEME BAĞLAN</button>
                             </div>
                         </div>
                     </div>
@@ -173,106 +150,86 @@
             }
 
             return (
-                <div className="min-h-screen bg-[#020617] flex flex-col">
-                    <header className="p-6 border-b border-white/5 flex justify-between items-center sticky top-0 bg-[#020617]/90 backdrop-blur-xl z-50">
-                        <div className="flex items-center gap-4">
-                            <div className={`p-3 rounded-2xl shadow-xl ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
-                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} className="text-white" size={24} />
+                <div className="min-h-screen bg-main flex flex-col pb-24">
+                    <header className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-50">
+                        <div className="flex items-center gap-3">
+                            <div className={`p-3 rounded-xl shadow-lg ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
+                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} className="text-white" size={24}/>
                             </div>
-                            <div>
-                                <h2 className="font-black text-xl uppercase tracking-tighter italic text-white">
-                                    {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark Üssü' : 'Akıllı Ev'}
-                                </h2>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <div className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></div>
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest italic">Canlı Bulut Verisi</span>
-                                </div>
-                            </div>
+                            <h2 className="font-black text-lg uppercase italic text-white leading-none">
+                                {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark' : 'Akıllı Ev'}
+                            </h2>
                         </div>
-                        <button onClick={() => {setIsAuth(false); setPasscode('');}} className="p-3 bg-white/5 rounded-2xl text-slate-400 hover:text-red-500 transition-all">
-                            <Icon name="log-out" size={20} />
-                        </button>
+                        <button onClick={() => setIsAuth(false)} className="p-3 bg-white/5 rounded-xl text-slate-400 btn-interact"><Icon name="log-out" size={20} /></button>
                     </header>
                     
                     <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
-                        
                         {activeProject === 'greenhouse' && (
-                            <div className="animate-in fade-in duration-700 space-y-6">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <div className="glass-panel p-8 rounded-[40px] text-center shadow-lg">
+                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
                                         <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white">{greenhouse.temp}°C</span>
-                                        <p className="text-[10px] font-black text-slate-500 mt-2 uppercase">Sıcaklık</p>
+                                        <span className="text-4xl font-black text-white">{greenhouseData.temp || 0}°C</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest">Sıcaklık</p>
                                     </div>
-                                    <div className="glass-panel p-8 rounded-[40px] text-center shadow-lg">
+                                    <div className="glass-card p-8 rounded-[40px] text-center shadow-lg">
                                         <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
-                                        <span className="text-4xl font-black text-white">%{greenhouse.hum}</span>
-                                        <p className="text-[10px] font-black text-slate-500 mt-2 uppercase">Nem</p>
+                                        <span className="text-4xl font-black text-white">%{greenhouseData.hum || 0}</span>
+                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest">Nem</p>
                                     </div>
                                 </div>
                                 <button 
-                                    onClick={() => toggleDevice('greenhouse', 'fan', !greenhouse.fan)}
-                                    className={`w-full p-8 rounded-[40px] flex items-center justify-between px-10 transition-all shadow-2xl ${greenhouse.fan ? 'bg-emerald-600 text-white' : 'bg-white/5 text-slate-400'}`}
+                                    onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} 
+                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData.fan ? 'bg-emerald-600 shadow-emerald-500/20 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
                                 >
                                     <div className="flex items-center gap-4">
-                                        <Icon name="wind" size={24} className={greenhouse.fan ? 'animate-spin' : ''} />
-                                        <span className="font-black text-sm uppercase italic">Fan Kontrolü</span>
+                                        <Icon name="wind" className={greenhouseData.fan ? 'animate-spin' : ''} size={24} />
+                                        <span>HAVALANDIRMA</span>
                                     </div>
-                                    <span className="text-xs font-bold uppercase">{greenhouse.fan ? 'AÇIK' : 'KAPALI'}</span>
+                                    <span className="text-xs">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
                                 </button>
                             </div>
                         )}
-
                         {activeProject === 'parking' && (
-                            <div className="animate-in fade-in duration-700 space-y-6">
-                                <div className="glass-panel p-12 rounded-[56px] text-center relative overflow-hidden shadow-2xl">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
+                                <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
                                     <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
-                                    <p className="text-slate-500 font-bold uppercase text-[10px] tracking-[0.5em] mb-4">Anlık Doluluk</p>
+                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Otopark Durumu</p>
                                     <div className="flex items-center justify-center gap-6 relative">
-                                        <h3 className="text-[10rem] font-black text-white tracking-tighter leading-none">{parking.occupied}</h3>
+                                        <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied || 0}</h3>
                                         <div className="text-left leading-none">
-                                            <p className="text-4xl font-black text-slate-700 italic">/ 4</p>
-                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest">ARAÇ</p>
+                                            <p className="text-3xl font-black text-slate-700 italic">/ 4</p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none text-nowrap">ARAÇ</p>
                                         </div>
                                     </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    {parking.slots.map((isDolu, i) => (
-                                        <div key={i} className={`p-8 rounded-[40px] glass-panel flex flex-col items-center gap-4 border-2 transition-all ${isDolu ? 'border-red-500 bg-red-500/10' : 'border-white/5 opacity-40'}`}>
-                                            <Icon name="car" size={32} className={isDolu ? 'text-red-500' : 'text-slate-600'} />
-                                            <span className="text-[10px] font-bold uppercase tracking-widest">SLOT {i+1}</span>
-                                        </div>
-                                    ))}
                                 </div>
                             </div>
                         )}
-
                         {activeProject === 'home' && (
-                            <div className="animate-in fade-in duration-700 space-y-6">
+                            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-6">
                                 <div className="bg-indigo-900/40 p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5 text-center">
-                                    <Icon name="shield-check" size={120} className="absolute -right-12 -bottom-12 opacity-10" />
-                                    <h3 className="text-2xl font-black mb-2 uppercase italic text-indigo-400">Akıllı Ev Üssü</h3>
-                                    <p className="text-slate-400 text-sm font-medium">Sistem güvenliği ve ışıklandırma aktif.</p>
+                                    <Icon name="shield-check" size={100} className="absolute -right-8 -bottom-8 opacity-10" />
+                                    <h3 className="text-2xl font-black mb-2 uppercase italic text-indigo-400 leading-none">Akıllı Konut</h3>
+                                    <p className="text-slate-400 text-sm font-medium mt-2">Sistem güvenliği aktif.</p>
                                 </div>
                                 <button 
-                                    onClick={() => toggleDevice('home', 'light', !home.light)}
-                                    className={`w-full p-10 rounded-[44px] flex items-center justify-between px-10 transition-all shadow-2xl ${home.light ? 'bg-yellow-400 text-yellow-950' : 'bg-white/5 text-slate-400'}`}
+                                    onClick={() => toggleCommand('home', 'light', !homeData.light)} 
+                                    className={`w-full p-10 rounded-[44px] font-black flex items-center justify-between px-10 btn-interact ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-yellow-400/30 shadow-2xl' : 'bg-slate-800 text-slate-400'}`}
                                 >
                                     <div className="flex items-center gap-6">
-                                        <Icon name="zap" size={32} className={home.light ? 'rotate-12' : ''} />
-                                        <span className="text-xl font-black uppercase italic">Salon Işığı</span>
+                                        <Icon name="zap" className={homeData.light ? 'rotate-12 text-yellow-950' : 'text-slate-400'} size={36} />
+                                        <span className="text-xl uppercase italic">Salon Işığı</span>
                                     </div>
-                                    <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${home.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
-                                        <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${home.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                    <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
+                                        <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
                                     </div>
                                 </button>
                             </div>
                         )}
                     </main>
-
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-panel px-8 py-4 rounded-[32px] flex items-center gap-3 border border-white/5 z-40 shadow-2xl">
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
                         <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />
-                        <span className="text-[10px] font-bold text-white uppercase tracking-widest italic leading-none">Veri Senkronize Ediliyor</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest italic leading-none">Senkronizasyon Aktif</span>
                     </div>
                 </div>
             );

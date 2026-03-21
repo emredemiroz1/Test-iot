@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>IoT Master Kontrol Paneli</title>
+  <title>ENKA Kontrol Paneli</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -324,16 +324,25 @@
         );
       }
 
-      // Giriş Ekranı
+      // Giriş Ekranı (ENKA Tasarımı)
       if (!loggedIn) {
         return (
           <div className="min-h-screen flex items-center justify-center px-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-            <div className="glass-panel w-full max-w-sm rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500"></div>
+            <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+              <div className="absolute top-0 left-0 w-full h-2 bg-[#172b4d]"></div>
               
-              <div className="text-center text-5xl mb-4">🌐</div>
-              <h1 className="text-center text-2xl font-black tracking-tight mb-1">IOT MASTER</h1>
-              <p className="text-center text-slate-400 text-sm mb-8">Birleşik Kontrol Sistemi</p>
+              <div className="text-center mb-8 mt-2">
+                <h1 className="text-center text-4xl font-black tracking-tighter text-[#172b4d] leading-[1.1]">
+                  ENKA<br/>OKULLARI
+                </h1>
+                <div className="flex items-center justify-center gap-3 mt-4">
+                  <div className="h-[1px] w-8 bg-[#008cc9]"></div>
+                  <p className="text-[#008cc9] text-[10px] font-bold italic tracking-wide uppercase">
+                    ENKAlı Olmak Ayrıcalıktır
+                  </p>
+                  <div className="h-[1px] w-8 bg-[#008cc9]"></div>
+                </div>
+              </div>
 
               <input
                 type="password"
@@ -341,19 +350,19 @@
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && login()}
-                placeholder="PIN Kodu (0000)"
-                className="w-full rounded-xl bg-slate-900/80 border border-white/10 px-5 py-4 text-center text-2xl tracking-[0.5em] outline-none focus:border-blue-500 transition-colors mb-4"
+                placeholder="PIN Kodu"
+                className="w-full rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-center text-2xl tracking-[0.5em] text-[#172b4d] outline-none focus:border-[#008cc9] focus:ring-2 focus:ring-[#008cc9]/20 transition-all mb-4 font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-400"
               />
 
               <button
                 onClick={login}
-                className="w-full rounded-xl bg-blue-600 hover:bg-blue-500 py-4 font-bold uppercase tracking-wider btn-touch shadow-lg shadow-blue-600/20"
+                className="w-full rounded-xl bg-[#172b4d] hover:bg-[#0f1d35] text-white py-4 font-bold uppercase tracking-wider btn-touch shadow-lg shadow-[#172b4d]/20"
               >
                 Sisteme Bağlan
               </button>
 
               {errorMsg && (
-                <div className="mt-4 p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-center text-sm">
+                <div className="mt-4 p-3 rounded-lg bg-red-50 border border-red-100 text-red-500 text-center text-sm font-medium">
                   {errorMsg}
                 </div>
               )}
@@ -367,11 +376,11 @@
           {/* Header */}
           <header className="px-6 py-5 glass-panel sticky top-0 z-50 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-lg shadow-lg">
-                ⚡
+              <div className="w-10 h-10 rounded-xl bg-[#172b4d] flex items-center justify-center text-lg shadow-lg">
+                🏫
               </div>
               <div>
-                <div className="text-lg font-black tracking-tight leading-tight">IoT MASTER</div>
+                <div className="text-lg font-black tracking-tight leading-tight text-white">ENKA KONTROL</div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                   <span className={`w-2 h-2 rounded-full ${user ? 'bg-green-500' : 'bg-red-500'}`}></span>
                   {user ? 'Çevrimiçi' : 'Bağlantı Koptu'}

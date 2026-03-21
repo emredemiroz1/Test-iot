@@ -34,8 +34,7 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global erişim için window nesnesine ekliyoruz
-        window.React = React;
+        // Global erişim için window nesnesine ekliyoruz (React Script'i ile Module script'i arasında köprü)
         window.db = db;
         window.auth = auth;
         window.customAppId = customAppId;
@@ -75,15 +74,24 @@
             const [homeData, setHomeData] = useState({ light: false });
 
             useEffect(() => {
-                const init = async () => {
-                    try { await window.signInAnonymously(window.auth); } catch (e) { console.error(e); }
+                const initAuth = async () => {
+                    try {
+                        if (window.auth) {
+                            await window.signInAnonymously(window.auth);
+                        }
+                    } catch (e) {
+                        console.error("Bağlantı Hatası:", e);
+                    }
                 };
-                init();
-                return window.onAuthStateChanged(window.auth, setUser);
+                initAuth();
+                if (window.onAuthStateChanged && window.auth) {
+                    return window.onAuthStateChanged(window.auth, setUser);
+                }
             }, []);
 
             useEffect(() => {
-                if (!user) return;
+                if (!user || !window.db) return;
+                
                 const path = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
 
                 const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
@@ -123,7 +131,7 @@
                             <div className="w-24 h-24 bg-gradient-to-tr from-blue-600 to-indigo-500 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/20 -rotate-3">
                                 <ShieldCheck className="text-white" size={48} />
                             </div>
-                            <h1 className="text-3xl font-black text-white mb-2 tracking-tight uppercase">IOT MASTER</h1>
+                            <h1 className="text-3xl font-black text-white mb-2 tracking-tight uppercase leading-none">IOT MASTER</h1>
                             <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.3em] mb-12 italic">Güvenli Erişim Paneli</p>
                             
                             <div className="space-y-4">
@@ -179,51 +187,51 @@
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="glass-card p-8 rounded-[40px] text-center">
                                         <Thermometer size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white">{greenhouseData.temp}°C</span>
-                                        <p className="text-[10px] font-black text-slate-500 mt-2 uppercase">Sıcaklık</p>
+                                        <span className="text-4xl font-black text-white leading-none">{greenhouseData.temp}°C</span>
+                                        <p className="text-[10px] font-black text-slate-500 mt-3 uppercase tracking-widest italic">İç Sıcaklık</p>
                                     </div>
                                     <div className="glass-card p-8 rounded-[40px] text-center">
                                         <Droplets size={24} className="mx-auto mb-4 text-blue-500" />
-                                        <span className="text-4xl font-black text-white">%{greenhouseData.hum}</span>
-                                        <p className="text-[10px] font-black text-slate-500 mt-2 uppercase">Nem</p>
+                                        <span className="text-4xl font-black text-white leading-none">%{greenhouseData.hum}</span>
+                                        <p className="text-[10px] font-black text-slate-500 mt-3 uppercase tracking-widest italic">Nem Oranı</p>
                                     </div>
                                 </div>
                                 <button onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 transition-all ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-2xl shadow-emerald-500/20' : 'bg-white/5 text-slate-400'}`}>
                                     <div className="flex items-center gap-4">
                                         <Wind size={24} className={greenhouseData.fan ? 'animate-spin' : ''} />
-                                        <span>FAN SİSTEMİ</span>
+                                        <span className="italic tracking-tighter">FAN SİSTEMİ</span>
                                     </div>
-                                    <span className="text-xs uppercase">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
+                                    <span className="text-xs font-bold uppercase">{greenhouseData.fan ? 'AKTİF' : 'KAPALI'}</span>
                                 </button>
                             </div>
                         )}
                         {activeProject === 'parking' && (
-                            <div className="space-y-6">
+                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
                                 <div className="glass-card p-12 rounded-[56px] text-center relative overflow-hidden">
-                                    <Activity className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
-                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Mevcut Doluluk</p>
+                                    <Activity className="absolute -right-12 -top-12 text-orange-500 opacity-5 animate-pulse" size={200} />
+                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">Otopark Doluluk</p>
                                     <div className="flex items-center justify-center gap-6 relative">
                                         <h3 className="text-[10rem] font-black text-white tracking-tighter leading-none">{parkingData.occupied}</h3>
                                         <div className="text-left leading-none">
                                             <p className="text-4xl font-black text-slate-700 italic">/ 4</p>
-                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest">ARAÇ</p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest leading-none">ARAÇ</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         )}
                         {activeProject === 'home' && (
-                            <div className="space-y-6">
-                                <div className="bg-[#1e1b4b] p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5 text-white text-center">
+                            <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-6">
+                                <div className="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-[48px] p-10 text-white shadow-2xl relative overflow-hidden border border-white/5 text-center">
                                     <ShieldCheck size={120} className="absolute -right-12 -bottom-12 opacity-5" />
-                                    <h3 className="text-2xl font-black flex items-center justify-center gap-3 tracking-tighter uppercase italic"><Zap className="text-indigo-400" /> AKILLI KONUT</h3>
+                                    <h3 className="text-2xl font-black mb-2 flex items-center justify-center gap-3 tracking-tighter uppercase italic leading-none"><Zap className="text-indigo-400" /> AKILLI KONUT</h3>
                                     <p className="text-indigo-300/60 text-sm mt-3 font-medium">Güvenlik ve otomasyon aktif.</p>
                                 </div>
                                 <button 
                                     onClick={() => toggleCommand('home', 'light', !homeData.light)} 
-                                    className={`w-full p-10 rounded-[44px] flex items-center justify-between transition-all group ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-2xl shadow-yellow-400/20' : 'bg-white/5 text-slate-400'}`}
+                                    className={`w-full p-10 rounded-[44px] flex items-center justify-between transition-all group ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-2xl shadow-yellow-400/20' : 'bg-white/5 text-slate-400 border border-white/5'}`}
                                 >
-                                    <div className="font-black block text-xl tracking-tighter uppercase leading-none text-left text-white">Salon Işığı</div>
+                                    <div className="font-black block text-xl tracking-tighter uppercase leading-none text-left italic">Salon Işığı</div>
                                     <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-700'}`}>
                                         <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
                                     </div>
@@ -231,9 +239,9 @@
                             </div>
                         )}
                     </main>
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur shadow-2xl px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur shadow-2xl px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40 transition-all hover:scale-105 active:scale-95">
                         <RefreshCcw size={14} className="text-blue-400 animate-spin" />
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest">Senkronizasyon Aktif</span>
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest italic">Senkronizasyon Aktif</span>
                     </div>
                 </div>
             );

@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IOT Master Kontrol Paneli</title>
+    <!-- Tailwind CSS ve İkon Kütüphaneleri -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- React ve Firebase Kütüphaneleri -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+        import { getFirestore, doc, onSnapshot, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        // Senin sağladığın gerçek Firebase yapılandırması
+        const config = {
+            apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
+            authDomain: "akillisera-b71d4.firebaseapp.com",
+            databaseURL: "https://akillisera-b71d4-default-rtdb.firebaseio.com",
+            projectId: "akillisera-b71d4",
+            storageBucket: "akillisera-b71d4.firebasestorage.app",
+            messagingSenderId: "326483167364",
+            appId: "1:326483167364:web:77623670ecad58db099ad1",
+            measurementId: "G-NNJK2RKKDG"
+        };
+
+        const customAppId = "master-iot-final-v2"; // Firestore yollarımız için sabit ID
+        const app = initializeApp(config);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        // Global erişim için window nesnesine ekleme
+        window.React = React;
+        window.db = db;
+        window.auth = auth;
+        window.customAppId = customAppId;
+        window.signInAnonymously = signInAnonymously;
+        window.onAuthStateChanged = onAuthStateChanged;
+        window.onSnapshot = onSnapshot;
+        window.updateDoc = updateDoc;
+        window.setDoc = setDoc;
+        window.doc = doc;
+    </script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .bg-gradient-dark { background: radial-gradient(circle at top right, #1e293b, #020617); }
+    </style>
+</head>
+<body class="bg-slate-50">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { 
+          Lock, Thermometer, Droplets, Car, Home, Zap, ShieldCheck, 
+          Wind, RefreshCcw, QrCode, LogOut, ChevronRight, Activity 
+        } = lucide;
+
+        function App() {
+            const [user, setUser] = useState(null);
+            const [isAuth, setIsAuth] = useState(false);
+            const [passcode, setPasscode] = useState('');
+            const [activeProject, setActiveProject] = useState(null);
+            
+            const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
+            const [parkingData, setParkingData] = useState({ slots: [false, false, false, false], occupied: 0 });
+            const [homeData, setHomeData] = useState({ light: false });
+
+            useEffect(() => {
+                const init = async () => {
+                    try { await window.signInAnonymously(window.auth); } catch (e) { console.error("Bağlantı Hatası:", e); }
+                };
+                init();
+                return window.onAuthStateChanged(window.auth, setUser);
+            }, []);
+
+            useEffect(() => {
+                if (!user) return;
+                
+                const getDocRef = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
+
+                const unsubSera = window.onSnapshot(getDocRef('greenhouse'), (d) => {
+                    if (d.exists()) setGreenhouseData(d.data());
+                    else window.setDoc(getDocRef('greenhouse'), { temp: 0, hum: 0, fan: false });
+                });
+
+                const unsubParking = window.onSnapshot(getDocRef('parking'), (d) => {
+                    if (d.exists()) setParkingData(d.data());
+                    else window.setDoc(getDocRef('parking'), { slots: [false, false, false, false], occupied: 0 });
+                });
+
+                const unsubHome = window.onSnapshot(getDocRef('home'), (d) => {
+                    if (d.exists()) setHomeData(d.data());
+                    else window.setDoc(getDocRef('home'), { light: false });
+                });
+
+                return () => { unsubSera(); unsubParking(); unsubHome(); };
+            }, [user]);
+
+            const handleLogin = () => {
+                if (passcode === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
+                else if (passcode === '5678') { setActiveProject('parking'); setIsAuth(true); }
+                else if (passcode === '0000') { setActiveProject('home'); setIsAuth(true); }
+                else { alert("Geçersiz Kod!"); setPasscode(''); }
+            };
+
+            const toggleCommand = async (proj, field, val) => {
+                const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
+                await window.updateDoc(ref, { [field]: val, lastAction: new Date() });
+            };
+
+            if (!isAuth) {
+                return (
+                    <div className="min-h-screen bg-gradient-dark flex items-center justify-center p-6">
+                        <div className="w-full max-w-sm bg-slate-900/40 backdrop-blur-2xl rounded-[48px] p-10 shadow-2xl border border-white/5 text-center">
+                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl shadow-blue-500/20">
+                                <ShieldCheck className="text-white" size={40} />
+                            </div>
+                            <h1 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">Iot Lab Giriş</h1>
+                            <p className="text-slate-500 text-[10px] font-bold uppercase tracking-[0.2em] mb-12 italic">Güvenli Erişim Paneli</p>
+                            
+                            <input 
+                                type="password" value={passcode} onChange={(e) => setPasscode(e.target.value)}
+                                placeholder="••••" className="w-full bg-black/40 border border-white/10 rounded-3xl py-5 text-white text-center text-4xl tracking-widest mb-6 focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-800"
+                            />
+                            
+                            <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl transition-all shadow-xl shadow-blue-600/20 uppercase tracking-widest active:scale-95">
+                                Sistemi Başlat
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="min-h-screen">
+                    <header className="bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-6 flex justify-between items-center sticky top-0 z-30 shadow-sm">
+                        <div className="flex items-center gap-3">
+                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-white shadow-lg ${activeProject === 'greenhouse' ? 'bg-emerald-500 shadow-emerald-200' : activeProject === 'parking' ? 'bg-orange-500 shadow-orange-200' : 'bg-indigo-600 shadow-indigo-200'}`}>
+                                {activeProject === 'greenhouse' ? <Droplets size={24}/> : activeProject === 'parking' ? <Car size={24}/> : <Home size={24}/>}
+                            </div>
+                            <div>
+                                <h2 className="font-black text-lg uppercase tracking-tight leading-none italic">
+                                    {activeProject === 'greenhouse' ? 'Sera Kontrol' : activeProject === 'parking' ? 'Otopark Hub' : 'Akıllı Ev'}
+                                </h2>
+                                <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1.5 flex items-center gap-1">
+                                    <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span> Bulut Aktif
+                                </p>
+                            </div>
+                        </div>
+                        <button onClick={() => {setIsAuth(false); setActiveProject(null); setPasscode('');}} className="p-3 bg-slate-50 rounded-2xl text-slate-400 hover:text-red-500 transition-all">
+                            <LogOut size={20} />
+                        </button>
+                    </header>
+                    
+                    <main className="p-6 max-w-xl mx-auto space-y-6">
+                        {activeProject === 'greenhouse' && (
+                            <div className="animate-in fade-in duration-500 space-y-6">
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="bg-white p-8 rounded-[40px] text-center shadow-sm border border-slate-100 relative overflow-hidden">
+                                        <div className="w-10 h-10 bg-orange-50 rounded-full flex items-center justify-center mx-auto mb-4 text-orange-500"><Thermometer size={20} /></div>
+                                        <span className="text-4xl font-black text-slate-800 tracking-tighter">{greenhouseData.temp}°C</span>
+                                        <p className="text-[10px] font-black text-slate-400 mt-2 uppercase">Sıcaklık</p>
+                                    </div>
+                                    <div className="bg-white p-8 rounded-[40px] text-center shadow-sm border border-slate-100">
+                                        <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500"><Droplets size={20} /></div>
+                                        <span className="text-4xl font-black text-slate-800 tracking-tighter">%{greenhouseData.hum}</span>
+                                        <p className="text-[10px] font-black text-slate-400 mt-2 uppercase tracking-widest">Nem</p>
+                                    </div>
+                                </div>
+                                <div className="bg-white p-4 rounded-[40px] shadow-sm border border-slate-100">
+                                    <button 
+                                        onClick={() => toggleCommand('greenhouse', 'fan', !greenhouseData.fan)} 
+                                        className={`w-full p-8 rounded-[32px] flex items-center justify-between transition-all ${greenhouseData.fan ? 'bg-emerald-600 text-white shadow-xl shadow-emerald-200' : 'bg-slate-50 text-slate-300'}`}
+                                    >
+                                        <div className="flex items-center gap-4">
+                                            <div className={`p-4 rounded-2xl ${greenhouseData.fan ? 'bg-emerald-500 rotate-180' : 'bg-slate-200'} transition-all`}><Wind className={greenhouseData.fan ? 'animate-spin' : ''} /></div>
+                                            <span className="font-black text-sm uppercase italic">Fan Sistemi</span>
+                                        </div>
+                                        <span className="font-black text-xs uppercase">{greenhouseData.fan ? 'AÇIK' : 'KAPALI'}</span>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {activeProject === 'parking' && (
+                            <div className="animate-in fade-in duration-500 space-y-6">
+                                <div className="bg-white p-12 rounded-[56px] text-center shadow-sm border border-slate-100 relative overflow-hidden">
+                                    <Activity className="absolute -right-10 -top-10 text-orange-100 opacity-20" size={150} />
+                                    <p className="text-slate-400 font-black uppercase text-[10px] tracking-[0.4em] mb-4">Anlık Doluluk</p>
+                                    <div className="flex items-center justify-center gap-4 relative">
+                                        <h3 className="text-9xl font-black text-slate-800 tracking-tighter leading-none">{parkingData.occupied}</h3>
+                                        <div className="text-left leading-none">
+                                            <p className="text-3xl font-black text-slate-200 italic">/ 4</p>
+                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-2">Dolu</p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    {parkingData.slots.map((isOccupied, idx) => (
+                                        <div key={idx} className={`p-8 rounded-[40px] border-2 flex flex-col items-center gap-4 transition-all duration-500 ${isOccupied ? 'bg-white border-red-500 shadow-xl shadow-red-100' : 'bg-white border-slate-100 opacity-40'}`}>
+                                            <div className={`w-16 h-16 rounded-[24px] flex items-center justify-center ${isOccupied ? 'bg-red-500 text-white shadow-lg' : 'bg-slate-100 text-slate-300'}`}>
+                                                <Car size={32} />
+                                            </div>
+                                            <span className="font-black text-[10px] uppercase italic">Park {idx + 1}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {activeProject === 'home' && (
+                            <div className="animate-in fade-in duration-500 space-y-6 text-white">
+                                <div className="bg-[#1e1b4b] p-10 rounded-[48px] shadow-2xl relative overflow-hidden border border-white/5">
+                                    <ShieldCheck size={160} className="absolute -right-12 -bottom-12 opacity-5" />
+                                    <h3 className="text-2xl font-black flex items-center gap-3 tracking-tighter uppercase italic"><Zap className="text-indigo-400" /> Akıllı Konut</h3>
+                                    <p className="text-indigo-300/60 text-sm mt-3 font-medium">Merkezi güvenlik katmanı aktif.</p>
+                                </div>
+                                <div className="bg-white p-4 rounded-[40px] shadow-sm border border-slate-100">
+                                    <button 
+                                        onClick={() => toggleCommand('home', 'light', !homeData.light)} 
+                                        className={`w-full p-8 rounded-[36px] flex items-center justify-between transition-all ${homeData.light ? 'bg-yellow-400 text-yellow-950 shadow-2xl shadow-yellow-200' : 'bg-slate-50 text-slate-300'}`}
+                                    >
+                                        <div className="flex items-center gap-6 text-left">
+                                            <div className={`w-20 h-20 rounded-[28px] flex items-center justify-center transition-all ${homeData.light ? 'bg-white text-yellow-500 shadow-lg' : 'bg-slate-200'}`}><Zap size={36} /></div>
+                                            <div className="font-black block text-lg tracking-tighter uppercase leading-none">Salon Işığı</div>
+                                        </div>
+                                        <div className={`w-14 h-8 rounded-full relative p-1 transition-all ${homeData.light ? 'bg-yellow-600' : 'bg-slate-200'}`}>
+                                            <div className={`w-6 h-6 bg-white rounded-full transition-all shadow-md ${homeData.light ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                                        </div>
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-slate-900/90 backdrop-blur shadow-2xl px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/10 z-40">
+                        <RefreshCcw size={14} className="text-blue-400 animate-spin" />
+                        <span className="text-[10px] font-black text-white uppercase tracking-widest">Sistem Bağlı</span>
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+        
+        // İkonları Başlat
+        setTimeout(() => lucide.createIcons(), 500);
+    </script>
+</body>
+</html>

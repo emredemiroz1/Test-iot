@@ -33,7 +33,6 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // Global erişim için window nesnesine güvenli atama
         window.db = db;
         window.auth = auth;
         window.customAppId = customAppId;
@@ -42,8 +41,6 @@
         window.onSnapshot = onSnapshot;
         window.signInAnonymously = signInAnonymously;
         window.onAuthStateChanged = onAuthStateChanged;
-
-        console.log("Firebase Modülleri Yüklendi.");
     </script>
     
     <style>
@@ -52,7 +49,6 @@
         .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
         .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
         
-        /* Buton etkileşimleri için kritik düzeltme */
         .btn-interact { 
             cursor: pointer !important; 
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); 
@@ -62,10 +58,8 @@
             z-index: 10;
         }
         .btn-interact:active { transform: scale(0.96); opacity: 0.9; }
-        .btn-interact:hover { filter: brightness(1.1); }
         .btn-interact:disabled { opacity: 0.4; cursor: not-allowed !important; }
 
-        /* Yükleme animasyonu */
         .loader { width: 12px; height: 12px; border: 2px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
@@ -74,7 +68,7 @@
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+        const { useState, useEffect } = React;
 
         const Icon = ({ name, className, size = 24 }) => {
             useEffect(() => {
@@ -95,51 +89,35 @@
             const [parkingData, setParkingData] = useState({ occupied: 0 });
             const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false });
 
-            // 1. Firebase Auth Başlatma
             useEffect(() => {
                 const initAuth = async () => {
                     try {
-                        if (window.auth) {
-                            await window.signInAnonymously(window.auth);
-                            console.log("Anonim giriş yapıldı.");
-                        }
+                        if (window.auth) await window.signInAnonymously(window.auth);
                     } catch (e) { 
-                        console.error("Auth hatası:", e);
                         setErrorMsg("Bulut bağlantı hatası!");
                     }
                 };
                 initAuth();
                 if (window.onAuthStateChanged && window.auth) {
-                    return window.onAuthStateChanged(window.auth, (u) => {
-                        setUser(u);
-                        if(u) setErrorMsg('');
-                    });
+                    return window.onAuthStateChanged(window.auth, (u) => setUser(u));
                 }
             }, []);
 
-            // 2. Canlı Veri Takibi (onSnapshot)
             useEffect(() => {
                 if (!user || !window.db) return;
-
                 const getRef = (name) => window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', name, 'status');
 
-                // Sera Dinle
                 const unsubSera = window.onSnapshot(getRef('greenhouse'), (d) => {
                     if (d.exists()) setGreenhouseData(d.data());
                 });
 
-                // Otopark Dinle
                 const unsubParking = window.onSnapshot(getRef('parking'), (d) => {
                     if (d.exists()) setParkingData(d.data());
                 });
 
-                // Akıllı Ev Dinle
                 const unsubHome = window.onSnapshot(getRef('home'), (d) => {
                     if (d.exists()) setHomeData(d.data());
-                    else {
-                        // İlk çalıştırma için boş döküman oluştur
-                        window.setDoc(getRef('home'), { light: false, kitchen: false, plug: false }, { merge: true });
-                    }
+                    else window.setDoc(getRef('home'), { light: false, kitchen: false, plug: false }, { merge: true });
                 });
 
                 return () => { unsubSera(); unsubParking(); unsubHome(); };
@@ -155,21 +133,12 @@
 
             const toggleCommand = async (proj, field, currentVal) => {
                 if (loading || !user) return;
-                
                 setLoading(true);
-                setErrorMsg('');
-                
                 try {
                     const nextVal = !currentVal;
                     const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
-                    
-                    console.log(`Gönderiliyor: ${field} -> ${nextVal}`);
-                    
                     await window.setDoc(ref, { [field]: nextVal }, { merge: true });
-                    
-                    console.log("Başarıyla güncellendi.");
                 } catch (err) {
-                    console.error("Veri gönderilemedi:", err);
                     setErrorMsg("Komut gönderilemedi!");
                 } finally {
                     setLoading(false);
@@ -217,7 +186,6 @@
                     </header>
                     
                     <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
-                        {/* HATA MESAJI */}
                         {errorMsg && (
                             <div className="bg-red-500/20 border border-red-500 text-red-500 p-4 rounded-2xl text-center text-xs font-bold animate-pulse">
                                 {errorMsg}
@@ -275,7 +243,6 @@
                                     <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Sistem Güvenliği Aktif</p>
                                 </div>
                                 
-                                {/* Salon Işığı */}
                                 <button 
                                     disabled={loading}
                                     onClick={() => toggleCommand('home', 'light', homeData.light)} 
@@ -290,7 +257,6 @@
                                     </div>
                                 </button>
 
-                                {/* Mutfak Işığı */}
                                 <button 
                                     disabled={loading}
                                     onClick={() => toggleCommand('home', 'kitchen', homeData.kitchen)} 
@@ -298,14 +264,13 @@
                                 >
                                     <div className="flex items-center gap-5">
                                         <Icon name="utensils" size={28} />
-                                        <span className="text-lg uppercase italic tracking-tighter">Mutfak Işığı</span>
+                                        <span className="text-lg uppercase italic tracking-tighter">{loading ? 'İŞLENİYOR...' : 'Mutfak Işığı'}</span>
                                     </div>
                                     <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.kitchen ? 'bg-blue-600' : 'bg-slate-700'}`}>
                                         <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.kitchen ? 'translate-x-5' : 'translate-x-0'}`}></div>
                                     </div>
                                 </button>
 
-                                {/* Akıllı Priz */}
                                 <button 
                                     disabled={loading}
                                     onClick={() => toggleCommand('home', 'plug', homeData.plug)} 
@@ -313,9 +278,9 @@
                                 >
                                     <div className="flex items-center gap-5">
                                         <Icon name="power" size={28} />
-                                        <span className="text-lg uppercase italic tracking-tighter">Akıllı Priz</span>
+                                        <span className="text-lg uppercase italic tracking-tighter">{loading ? 'İŞLENİYOR...' : 'Akıllı Priz'}</span>
                                     </div>
-                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeVal ? 'bg-emerald-600' : 'bg-slate-700'}`}>
+                                    <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData.plug ? 'bg-emerald-600' : 'bg-slate-700'}`}>
                                         <div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData.plug ? 'translate-x-5' : 'translate-x-0'}`}></div>
                                     </div>
                                 </button>

@@ -6,7 +6,7 @@
     <title>IOT Master | Kontrol Merkezi</title>
     <!-- Stil ve İkon Kütüphaneleri -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide-react"></script>
     <!-- React ve Firebase Kütüphaneleri -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
@@ -61,7 +61,7 @@
         const { 
           Lock, Thermometer, Droplets, Car, Home, Zap, ShieldCheck, 
           Wind, RefreshCcw, QrCode, LogOut, ChevronRight, Activity 
-        } = lucide;
+        } = Lucide;
 
         function App() {
             const [user, setUser] = useState(null);
@@ -97,17 +97,17 @@
                 const unsubSera = window.onSnapshot(path('greenhouse'), (d) => {
                     if (d.exists()) setGreenhouseData(d.data());
                     else window.setDoc(path('greenhouse'), { temp: 24, hum: 60, fan: false });
-                });
+                }, (err) => console.error(err));
 
                 const unsubParking = window.onSnapshot(path('parking'), (d) => {
                     if (d.exists()) setParkingData(d.data());
                     else window.setDoc(path('parking'), { slots: [false, false, false, false], occupied: 0 });
-                });
+                }, (err) => console.error(err));
 
                 const unsubHome = window.onSnapshot(path('home'), (d) => {
                     if (d.exists()) setHomeData(d.data());
                     else window.setDoc(path('home'), { light: false });
-                });
+                }, (err) => console.error(err));
 
                 return () => { unsubSera(); unsubParking(); unsubHome(); };
             }, [user]);
@@ -249,7 +249,6 @@
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
         root.render(<App />);
-        setTimeout(() => lucide.createIcons(), 500);
     </script>
 </body>
 </html>

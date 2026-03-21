@@ -1,275 +1,413 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>IOT Master | Kontrol Merkezi</title>
-    <!-- Stil ve İkon Kütüphaneleri -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- React ve Firebase Kütüphaneleri -->
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-        import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Akıllı Ev Kontrol</title>
 
-        const firebaseConfig = {
-            apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
-            authDomain: "akillisera-b71d4.firebaseapp.com",
-            databaseURL: "https://akillisera-b71d4-default-rtdb.firebaseio.com",
-            projectId: "akillisera-b71d4",
-            storageBucket: "akillisera-b71d4.firebasestorage.app",
-            messagingSenderId: "326483167364",
-            appId: "1:326483167364:web:77623670ecad58db099ad1",
-            measurementId: "G-NNJK2RKKDG"
-        };
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-        const customAppId = "master-iot-final-v2"; 
-        const app = initializeApp(firebaseConfig);
-        
-        // Global atamalar (Window nesnesine güvenli yerleşim)
-        window.fb_db = getFirestore(app);
-        window.fb_auth = getAuth(app);
-        window.fb_appId = customAppId;
-        window.fb_doc = doc;
-        window.fb_setDoc = setDoc;
-        window.fb_onSnapshot = onSnapshot;
-        window.fb_signIn = signInAnonymously;
-        window.fb_onAuth = onAuthStateChanged;
-        
-        console.log("Bulut altyapısı bağlandı.");
-    </script>
-    
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        body { font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; background-color: #020617; overflow-x: hidden; }
-        .bg-main { background: radial-gradient(circle at top right, #0f172a, #020617); }
-        .glass-card { background: rgba(30, 41, 59, 0.7); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); }
-        .btn-interact { cursor: pointer !important; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); user-select: none; -webkit-user-select: none; }
-        .btn-interact:active { transform: scale(0.96); opacity: 0.9; }
-        .loader { width: 14px; height: 14px; border: 2px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rot 1s linear infinite; }
-        @keyframes rot { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-    </style>
+  <style>
+    body {
+      margin: 0;
+      font-family: Arial, sans-serif;
+      background: linear-gradient(180deg, #020617 0%, #000814 100%);
+      color: white;
+      min-height: 100vh;
+    }
+
+    .panel {
+      background: rgba(30, 41, 59, 0.75);
+      border: 1px solid rgba(255,255,255,0.08);
+      backdrop-filter: blur(8px);
+    }
+
+    .btn-touch {
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .btn-touch:active {
+      transform: scale(0.98);
+    }
+
+    .loader {
+      width: 16px;
+      height: 16px;
+      border: 2px solid #fff;
+      border-bottom-color: transparent;
+      border-radius: 50%;
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      100% { transform: rotate(360deg); }
+    }
+  </style>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+    import { getFirestore, doc, onSnapshot, setDoc } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyAR1cyO7pFPM5RLvO308uAcSyf5HaqAizM",
+      authDomain: "akillisera-b71d4.firebaseapp.com",
+      projectId: "akillisera-b71d4",
+      storageBucket: "akillisera-b71d4.firebasestorage.app",
+      messagingSenderId: "326483167364",
+      appId: "1:326483167364:web:77623670ecad58db099ad1"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+
+    window.FB = {
+      auth,
+      db,
+      doc,
+      onSnapshot,
+      setDoc,
+      signInAnonymously,
+      onAuthStateChanged
+    };
+
+    window.APP_ID = "master-iot-final-v3";
+    window.firebaseReady = true;
+  </script>
 </head>
-<body class="text-slate-200">
-    <div id="root"></div>
+<body>
+  <div id="root"></div>
 
-    <script type="text/babel">
-        const { useState, useEffect } = React;
+  <script type="text/babel">
+    const { useEffect, useState } = React;
 
-        const Icon = ({ name, className, size = 24 }) => {
-            useEffect(() => {
-                if (window.lucide) window.lucide.createIcons();
-            }, [name]);
-            return <i data-lucide={name} className={className} style={{ width: size, height: size, display: 'inline-block' }}></i>;
-        };
+    window.onerror = function(message, source, lineno, colno, error) {
+      document.getElementById("root").innerHTML = `
+        <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:#020617;color:white;">
+          <div style="max-width:760px;background:#111827;border:1px solid rgba(255,255,255,.08);padding:24px;border-radius:18px;">
+            <h2 style="margin-top:0;color:#f87171;">JavaScript Hatası</h2>
+            <p><b>Mesaj:</b> ${message}</p>
+            <p><b>Satır:</b> ${lineno}</p>
+            <p><b>Sütun:</b> ${colno}</p>
+            <pre style="white-space:pre-wrap;color:#cbd5e1;">${error ? error.stack : ""}</pre>
+          </div>
+        </div>
+      `;
+      return true;
+    };
 
-        function App() {
-            const [user, setUser] = useState(null);
-            const [isAuth, setIsAuth] = useState(false);
-            const [passcode, setPasscode] = useState('');
-            const [activeProject, setActiveProject] = useState(null);
-            const [loading, setLoading] = useState(false);
-            const [hasError, setHasError] = useState(false);
-            
-            const [greenhouseData, setGreenhouseData] = useState({ temp: 0, hum: 0, fan: false });
-            const [parkingData, setParkingData] = useState({ occupied: 0 });
-            const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
+    function Toggle({ title, emoji, active, onClick, activeClass, disabled }) {
+      return (
+        <button
+          onClick={onClick}
+          disabled={disabled}
+          className={
+            "w-full rounded-[30px] px-7 py-7 flex items-center justify-between border btn-touch " +
+            (active
+              ? activeClass + " text-white border-transparent shadow-xl"
+              : "bg-slate-800 text-slate-300 border-white/5")
+          }
+        >
+          <div className="flex items-center gap-4">
+            <div className="text-3xl">{emoji}</div>
+            <div className="text-lg font-bold italic uppercase">{title}</div>
+          </div>
 
-            // 1. Kimlik Doğrulama Başlatıcı
-            useEffect(() => {
-                const init = async () => {
-                    try {
-                        if (window.fb_auth) await window.fb_signIn(window.fb_auth);
-                    } catch (e) { console.error("Giriş Hatası"); }
-                };
-                init();
-                if (window.fb_onAuth && window.fb_auth) {
-                    return window.fb_onAuth(window.fb_auth, (u) => setUser(u));
-                }
-            }, []);
+          <div className={"w-14 h-8 rounded-full p-1 transition-all " + (active ? "bg-white/20" : "bg-slate-700")}>
+            <div className={"w-6 h-6 bg-white rounded-full transition-all " + (active ? "translate-x-6" : "translate-x-0")}></div>
+          </div>
+        </button>
+      );
+    }
 
-            // 2. Canlı Veri Dinleme
-            useEffect(() => {
-                if (!user || !window.fb_db) return;
-                const getRef = (n) => window.fb_doc(window.fb_db, 'artifacts', window.fb_appId, 'public', 'data', n, 'status');
+    function App() {
+      const [ready, setReady] = useState(false);
+      const [user, setUser] = useState(null);
+      const [pin, setPin] = useState("");
+      const [loggedIn, setLoggedIn] = useState(false);
+      const [loading, setLoading] = useState(false);
+      const [errorMsg, setErrorMsg] = useState("");
 
-                try {
-                    const unsubSera = window.fb_onSnapshot(getRef('greenhouse'), (d) => {
-                        if (d.exists()) setGreenhouseData(d.data());
-                    });
-                    const unsubParking = window.fb_onSnapshot(getRef('parking'), (d) => {
-                        if (d.exists()) setParkingData(d.data());
-                    });
-                    const unsubHome = window.fb_onSnapshot(getRef('home'), (d) => {
-                        if (d.exists()) setHomeData(d.data());
-                        else window.fb_setDoc(getRef('home'), { light: false }, { merge: true });
-                    });
-                    return () => { unsubSera(); unsubParking(); unsubHome(); };
-                } catch (e) { console.error("Dinleme hatası"); }
-            }, [user]);
+      const [homeData, setHomeData] = useState({
+        light: false,
+        kitchen: false,
+        plug: false,
+        ac: false,
+        garden: false
+      });
 
-            // 3. Komut Gönderimi (Siyah Ekranı Bitiren Güvenli Fonksiyon)
-            const handleToggle = async (proj, field, currentVal) => {
-                if (loading || !user || !window.fb_setDoc) return;
-                
-                setLoading(true);
-                setHasError(false);
+      useEffect(() => {
+        const t = setInterval(() => {
+          if (window.firebaseReady && window.FB) {
+            setReady(true);
+            clearInterval(t);
+          }
+        }, 100);
+        return () => clearInterval(t);
+      }, []);
 
-                try {
-                    const nextVal = !currentVal;
-                    const docRef = window.fb_doc(window.fb_db, 'artifacts', window.fb_appId, 'public', 'data', proj, 'status');
-                    await window.fb_setDoc(docRef, { [field]: nextVal }, { merge: true });
-                } catch (err) {
-                    console.error("Gönderim Hatası:", err);
-                    setHasError(true);
-                } finally {
-                    setLoading(false);
-                }
-            };
+      useEffect(() => {
+        if (!ready) return;
 
-            const handleLogin = () => {
-                const c = passcode.trim();
-                if (c === '1234') { setActiveProject('greenhouse'); setIsAuth(true); }
-                else if (c === '5678') { setActiveProject('parking'); setIsAuth(true); }
-                else if (c === '0000') { setActiveProject('home'); setIsAuth(true); }
-                else { alert("PIN Hatalı!"); setPasscode(''); }
-            };
-
-            if (!isAuth) {
-                return (
-                    <div className="min-h-screen flex items-center justify-center p-6 bg-main">
-                        <div className="w-full max-w-sm glass-card rounded-[48px] p-10 shadow-2xl text-center">
-                            <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center mx-auto mb-8 shadow-2xl">
-                                <Icon name="shield-check" className="text-white" size={40} />
-                            </div>
-                            <h1 className="text-3xl font-black text-white mb-2 uppercase leading-none">IOT MASTER</h1>
-                            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-10 italic">Şifre Gerekli</p>
-                            <input 
-                                type="text" inputMode="numeric" value={passcode} 
-                                onChange={(e) => setPasscode(e.target.value)}
-                                placeholder="PIN" className="w-full bg-slate-900/50 border border-white/10 rounded-3xl py-5 text-white text-center text-3xl tracking-[0.4em] outline-none mb-4"
-                            />
-                            <button onClick={handleLogin} className="w-full bg-blue-600 hover:bg-blue-500 text-white font-black py-5 rounded-3xl shadow-xl btn-interact">BAĞLAN</button>
-                        </div>
-                    </div>
-                );
-            }
-
-            return (
-                <div className="min-h-screen bg-main flex flex-col pb-24 overflow-y-auto">
-                    {/* Header */}
-                    <header className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-900/40 backdrop-blur-md sticky top-0 z-50">
-                        <div className="flex items-center gap-3">
-                            <div className={`p-3 rounded-xl shadow-lg ${activeProject === 'greenhouse' ? 'bg-emerald-500' : activeProject === 'parking' ? 'bg-orange-500' : 'bg-indigo-600'}`}>
-                                <Icon name={activeProject === 'greenhouse' ? 'droplets' : activeProject === 'parking' ? 'car' : 'home'} className="text-white" size={24}/>
-                            </div>
-                            <h2 className="font-black text-lg uppercase italic text-white leading-none">
-                                {activeProject === 'greenhouse' ? 'Akıllı Sera' : activeProject === 'parking' ? 'Otopark' : 'Akıllı Ev'}
-                            </h2>
-                        </div>
-                        <button onClick={() => {setIsAuth(false); setPasscode('');}} className="p-3 bg-white/5 rounded-xl text-slate-400 btn-interact">
-                            <Icon name="log-out" size={20} />
-                        </button>
-                    </header>
-                    
-                    <main className="p-6 max-w-xl mx-auto w-full space-y-6 flex-1">
-                        {activeProject === 'greenhouse' && (
-                            <div className="space-y-6 animate-in fade-in duration-500 text-center">
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="glass-card p-8 rounded-[40px]">
-                                        <Icon name="thermometer" size={24} className="mx-auto mb-4 text-orange-500" />
-                                        <span className="text-4xl font-black text-white">{greenhouseData?.temp || 0}°</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">Isı</p>
-                                    </div>
-                                    <div className="glass-card p-8 rounded-[40px]">
-                                        <Icon name="droplets" size={24} className="mx-auto mb-4 text-blue-500" />
-                                        <span className="text-4xl font-black text-white">%{greenhouseData?.hum || 0}</span>
-                                        <p className="text-[10px] font-bold text-slate-500 mt-2 uppercase tracking-widest leading-none">Nem</p>
-                                    </div>
-                                </div>
-                                <button 
-                                    onClick={() => handleToggle('greenhouse', 'fan', !!greenhouseData?.fan)} 
-                                    className={`w-full p-8 rounded-[36px] font-black flex items-center justify-between px-10 btn-interact ${greenhouseData?.fan ? 'bg-emerald-600 text-white' : 'bg-slate-800 text-slate-400'}`}
-                                >
-                                    <div className="flex items-center gap-4">
-                                        <Icon name="wind" className={greenhouseData?.fan ? 'animate-spin' : ''} size={24} />
-                                        <span>FAN SİSTEMİ</span>
-                                    </div>
-                                    <span className="text-xs">{greenhouseData?.fan ? 'AÇIK' : 'KAPALI'}</span>
-                                </button>
-                            </div>
-                        )}
-
-                        {activeProject === 'parking' && (
-                            <div className="animate-in fade-in duration-500 text-center">
-                                <div className="glass-card p-12 rounded-[56px] relative overflow-hidden">
-                                    <Icon name="activity" className="absolute -right-12 -top-12 text-orange-500 opacity-5" size={200} />
-                                    <p className="text-slate-500 font-black uppercase text-[10px] tracking-[0.5em] mb-4">GÜNCEL DURUM</p>
-                                    <div className="flex items-center justify-center gap-6 relative">
-                                        <h3 className="text-[8rem] font-black text-white tracking-tighter leading-none">{parkingData?.occupied || 0}</h3>
-                                        <div className="text-left leading-none">
-                                            <p className="text-3xl font-black text-slate-700 italic">/ 4</p>
-                                            <p className="text-[10px] font-black text-orange-500 uppercase mt-4 tracking-widest">ARAÇ</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        {activeProject === 'home' && (
-                            <div className="space-y-4 animate-in fade-in duration-500">
-                                <div className="bg-gradient-to-br from-indigo-900/60 to-slate-900 p-8 rounded-[48px] shadow-2xl border border-white/5 text-center">
-                                    <h3 className="text-xl font-black mb-1 uppercase italic text-indigo-400">EV KONTROL ÜSSÜ</h3>
-                                    <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest italic">Sistem Güvenliği Aktif</p>
-                                </div>
-                                <div className="space-y-3">
-                                    {/* Statik Butonlar (Crash koruması için tek tek yazıldı) */}
-                                    <button onClick={() => handleToggle('home', 'light', !!homeData?.light)} 
-                                        className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData?.light ? 'bg-yellow-400 text-yellow-950 shadow-xl border-transparent' : 'bg-slate-800 text-slate-400 border-white/5'}`}>
-                                        <div className="flex items-center gap-5"><Icon name="zap" size={28} /> <span className="text-lg uppercase italic tracking-tighter">Salon Işığı (ESP LED)</span></div>
-                                        <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData?.light ? 'bg-black/20' : 'bg-slate-700'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData?.light ? 'translate-x-5' : 'translate-x-0'}`}></div></div>
-                                    </button>
-
-                                    <button onClick={() => handleToggle('home', 'kitchen', !!homeData?.kitchen)} 
-                                        className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData?.kitchen ? 'bg-blue-400 text-blue-950 shadow-xl border-transparent' : 'bg-slate-800 text-slate-400 border-white/5'}`}>
-                                        <div className="flex items-center gap-5"><Icon name="utensils" size={28} /> <span className="text-lg uppercase italic tracking-tighter">Mutfak Işığı</span></div>
-                                        <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData?.kitchen ? 'bg-black/20' : 'bg-slate-700'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData?.kitchen ? 'translate-x-5' : 'translate-x-0'}`}></div></div>
-                                    </button>
-
-                                    <button onClick={() => handleToggle('home', 'plug', !!homeData?.plug)} 
-                                        className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData?.plug ? 'bg-emerald-400 text-emerald-950 shadow-xl border-transparent' : 'bg-slate-800 text-slate-400 border-white/5'}`}>
-                                        <div className="flex items-center gap-5"><Icon name="power" size={28} /> <span className="text-lg uppercase italic tracking-tighter">Akıllı Priz</span></div>
-                                        <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData?.plug ? 'bg-black/20' : 'bg-slate-700'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData?.plug ? 'translate-x-5' : 'translate-x-0'}`}></div></div>
-                                    </button>
-
-                                    <button onClick={() => handleToggle('home', 'ac', !!homeData?.ac)} 
-                                        className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData?.ac ? 'bg-cyan-400 text-cyan-950 shadow-xl border-transparent' : 'bg-slate-800 text-slate-400 border-white/5'}`}>
-                                        <div className="flex items-center gap-5"><Icon name="snowflake" size={28} /> <span className="text-lg uppercase italic tracking-tighter">Klima Sistemi</span></div>
-                                        <div className={`w-12 h-7 rounded-full relative p-1 transition-all ${homeData?.ac ? 'bg-black/20' : 'bg-slate-700'}`}><div className={`w-5 h-5 bg-white rounded-full transition-all ${homeData?.ac ? 'translate-x-5' : 'translate-x-0'}`}></div></div>
-                                    </button>
-                                </div>
-                            </div>
-                        )}
-                    </main>
-
-                    {/* Senkronizasyon Çubuğu */}
-                    <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
-                        {loading ? <span className="loader"></span> : <Icon name="refresh-ccw" className={`text-blue-400 ${hasError ? '' : 'animate-spin'}`} size={14} />}
-                        <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
-                            {hasError ? 'YAZMA HATASI!' : loading ? 'KOMUT GİDİYOR...' : 'BULUT BAĞLANTISI AKTİF'}
-                        </span>
-                    </div>
-                </div>
-            );
+        async function authStart() {
+          try {
+            await window.FB.signInAnonymously(window.FB.auth);
+          } catch (e) {
+            console.error(e);
+            setErrorMsg("Firebase auth hatası: " + (e.code || e.message));
+          }
         }
 
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+        authStart();
+
+        const unsub = window.FB.onAuthStateChanged(window.FB.auth, (u) => {
+          setUser(u || null);
+        });
+
+        return () => unsub && unsub();
+      }, [ready]);
+
+      useEffect(() => {
+        if (!user) return;
+
+        const ref = window.FB.doc(
+          window.FB.db,
+          "artifacts",
+          window.APP_ID,
+          "public",
+          "data",
+          "home",
+          "status"
+        );
+
+        const unsub = window.FB.onSnapshot(
+          ref,
+          async (snap) => {
+            try {
+              if (snap.exists()) {
+                const d = snap.data() || {};
+                setHomeData({
+                  light: !!d.light,
+                  kitchen: !!d.kitchen,
+                  plug: !!d.plug,
+                  ac: !!d.ac,
+                  garden: !!d.garden
+                });
+              } else {
+                await window.FB.setDoc(ref, {
+                  light: false,
+                  kitchen: false,
+                  plug: false,
+                  ac: false,
+                  garden: false
+                }, { merge: true });
+              }
+            } catch (e) {
+              console.error(e);
+              setErrorMsg("Veri okuma hatası: " + (e.code || e.message));
+            }
+          },
+          (err) => {
+            console.error(err);
+            setErrorMsg("Snapshot hatası: " + (err.code || err.message));
+          }
+        );
+
+        return () => unsub && unsub();
+      }, [user]);
+
+      function login() {
+        if (pin === "0000") {
+          setLoggedIn(true);
+          setErrorMsg("");
+        } else {
+          alert("Akıllı Ev için PIN: 0000");
+        }
+      }
+
+      async function toggleField(field) {
+        if (!user) {
+          setErrorMsg("Firebase bağlantısı henüz hazır değil.");
+          return;
+        }
+
+        try {
+          setLoading(true);
+          setErrorMsg("");
+
+          const ref = window.FB.doc(
+            window.FB.db,
+            "artifacts",
+            window.APP_ID,
+            "public",
+            "data",
+            "home",
+            "status"
+          );
+
+          const current = !!homeData[field];
+
+          await window.FB.setDoc(ref, {
+            [field]: !current
+          }, { merge: true });
+
+        } catch (e) {
+          console.error(e);
+          setErrorMsg("Yazma hatası: " + (e.code || e.message));
+        } finally {
+          setLoading(false);
+        }
+      }
+
+      if (!ready) {
+        return (
+          <div className="min-h-screen flex items-center justify-center px-6">
+            <div className="panel rounded-[24px] px-8 py-8 text-center">
+              <span className="loader"></span>
+              <div className="mt-4 font-bold uppercase text-sm text-slate-300">
+                Firebase hazırlanıyor
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      if (!loggedIn) {
+        return (
+          <div className="min-h-screen flex items-center justify-center px-6">
+            <div className="panel w-full max-w-sm rounded-[30px] p-8">
+              <div className="text-center text-5xl mb-4">🏠</div>
+              <h1 className="text-center text-3xl font-black italic uppercase">Akıllı Ev</h1>
+              <p className="text-center text-slate-400 text-sm mt-2 mb-6">PIN ile giriş yap</p>
+
+              <input
+                type="text"
+                value={pin}
+                onChange={(e) => setPin(e.target.value)}
+                placeholder="0000"
+                className="w-full rounded-[20px] bg-slate-900 border border-white/10 px-5 py-4 text-center text-2xl outline-none mb-4"
+              />
+
+              <button
+                onClick={login}
+                className="w-full rounded-[20px] bg-indigo-600 hover:bg-indigo-500 py-4 font-bold uppercase btn-touch"
+              >
+                Giriş Yap
+              </button>
+
+              {errorMsg && (
+                <div className="mt-4 text-red-400 text-center text-sm">{errorMsg}</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      return (
+        <div className="min-h-screen">
+          <header className="px-6 py-6 border-b border-white/5 flex items-center justify-between bg-slate-950/40">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 rounded-[18px] bg-indigo-600 flex items-center justify-center text-3xl">
+                🏠
+              </div>
+              <div className="text-2xl font-black italic uppercase tracking-tight">
+                Akıllı Ev
+              </div>
+            </div>
+
+            <button
+              onClick={() => {
+                setLoggedIn(false);
+                setPin("");
+              }}
+              className="panel px-4 py-3 rounded-2xl btn-touch"
+            >
+              Çıkış
+            </button>
+          </header>
+
+          <main className="max-w-3xl mx-auto px-6 py-8">
+            {errorMsg && (
+              <div className="mb-5 rounded-[18px] border border-red-500/50 bg-red-500/10 px-5 py-4 text-red-400 text-center font-semibold">
+                {errorMsg}
+              </div>
+            )}
+
+            <div className="mb-5 rounded-[32px] bg-indigo-950/70 border border-white/5 px-8 py-10 text-center">
+              <div className="text-4xl font-black italic uppercase text-indigo-300 tracking-tight">
+                Ev Kontrol Üssü
+              </div>
+              <div className="text-slate-400 text-sm font-bold uppercase tracking-[0.2em] mt-2">
+                Sistem Güvenliği Aktif
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <Toggle
+                title="Salon Işığı"
+                emoji="💡"
+                active={homeData.light}
+                onClick={() => toggleField("light")}
+                activeClass="bg-yellow-500"
+                disabled={loading}
+              />
+
+              <Toggle
+                title="Mutfak Işığı"
+                emoji="🍽️"
+                active={homeData.kitchen}
+                onClick={() => toggleField("kitchen")}
+                activeClass="bg-blue-500"
+                disabled={loading}
+              />
+
+              <Toggle
+                title="Akıllı Priz"
+                emoji="🔌"
+                active={homeData.plug}
+                onClick={() => toggleField("plug")}
+                activeClass="bg-emerald-500"
+                disabled={loading}
+              />
+
+              <Toggle
+                title="Klima Sistemi"
+                emoji="❄️"
+                active={homeData.ac}
+                onClick={() => toggleField("ac")}
+                activeClass="bg-cyan-500"
+                disabled={loading}
+              />
+
+              <Toggle
+                title="Bahçe Aydınlatma"
+                emoji="🌞"
+                active={homeData.garden}
+                onClick={() => toggleField("garden")}
+                activeClass="bg-orange-500"
+                disabled={loading}
+              />
+            </div>
+          </main>
+
+          <div className="fixed bottom-6 left-1/2 -translate-x-1/2 panel rounded-[24px] px-6 py-4 flex items-center gap-3">
+            {loading ? <span className="loader"></span> : <span>🔄</span>}
+            <span className="text-xs font-bold uppercase tracking-[0.2em] text-white">
+              {loading ? "Komut Gönderiliyor" : "Canlı Senkronizasyon"}
+            </span>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(<App />);
+  </script>
 </body>
 </html>

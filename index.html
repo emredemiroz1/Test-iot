@@ -58,7 +58,7 @@
             z-index: 10;
         }
         .btn-interact:active { transform: scale(0.96); opacity: 0.9; }
-        .btn-interact:disabled { opacity: 0.4; cursor: wait !important; }
+        .btn-interact:disabled { opacity: 0.4; cursor: not-allowed !important; }
 
         .loader { width: 12px; height: 12px; border: 2px solid #FFF; border-bottom-color: transparent; border-radius: 50%; display: inline-block; animation: rotation 1s linear infinite; }
         @keyframes rotation { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -93,12 +93,10 @@
                 const initAuth = async () => {
                     try {
                         if (window.auth) {
-                            const cred = await window.signInAnonymously(window.auth);
-                            console.log("Bağlantı başarılı:", cred.user.uid);
+                            await window.signInAnonymously(window.auth);
                         }
                     } catch (e) { 
-                        console.error("Firebase Auth Hatası:", e);
-                        setErrorMsg("Bulut bağlantı hatası! (Lütfen Firebase'de Anonymous Auth'u açın)");
+                        setErrorMsg("Bulut bağlantı hatası!");
                     }
                 };
                 initAuth();
@@ -143,8 +141,7 @@
                     const ref = window.doc(window.db, 'artifacts', window.customAppId, 'public', 'data', proj, 'status');
                     await window.setDoc(ref, { [field]: nextVal }, { merge: true });
                 } catch (err) {
-                    console.error("Yazma Hatası:", err);
-                    setErrorMsg("Veri gönderilemedi!");
+                    setErrorMsg("Komut gönderilemedi!");
                 } finally {
                     setLoading(false);
                 }
@@ -250,17 +247,17 @@
                                 
                                 <div className="space-y-3">
                                     {[
-                                        { id: 'light', label: 'Salon Işığı', icon: 'zap', color: 'yellow' },
-                                        { id: 'kitchen', label: 'Mutfak Işığı', icon: 'utensils', color: 'blue' },
-                                        { id: 'plug', label: 'Akıllı Priz', icon: 'power', color: 'emerald' },
-                                        { id: 'ac', label: 'Klima Sistemi', icon: 'snowflake', color: 'cyan' },
-                                        { id: 'garden', label: 'Bahçe Aydınlatma', icon: 'sun', color: 'orange' }
+                                        { id: 'light', label: 'Salon Işığı (ESP TEST)', icon: 'zap', activeColor: 'bg-yellow-400', textColor: 'text-yellow-950', dotColor: 'bg-yellow-600' },
+                                        { id: 'kitchen', label: 'Mutfak Işığı', icon: 'utensils', activeColor: 'bg-blue-400', textColor: 'text-blue-950', dotColor: 'bg-blue-600' },
+                                        { id: 'plug', label: 'Akıllı Priz', icon: 'power', activeColor: 'bg-emerald-400', textColor: 'text-emerald-950', dotColor: 'bg-emerald-600' },
+                                        { id: 'ac', label: 'Klima Sistemi', icon: 'snowflake', activeColor: 'bg-cyan-400', textColor: 'text-cyan-950', dotColor: 'bg-cyan-600' },
+                                        { id: 'garden', label: 'Bahçe Aydınlatma', icon: 'sun', activeColor: 'bg-orange-400', textColor: 'text-orange-950', dotColor: 'bg-orange-600' }
                                     ].map((item) => (
                                         <button 
                                             key={item.id}
                                             disabled={loading}
                                             onClick={() => toggleCommand('home', item.id, homeData[item.id])} 
-                                            className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData[item.id] ? `bg-${item.color}-500/90 text-white shadow-lg border-transparent` : 'bg-slate-800 text-slate-400 border-white/5'}`}
+                                            className={`w-full p-7 rounded-[40px] font-black flex items-center justify-between px-8 btn-interact border transition-all ${homeData[item.id] ? `${item.activeColor} ${item.textColor} shadow-lg border-transparent` : 'bg-slate-800 text-slate-400 border-white/5'}`}
                                         >
                                             <div className="flex items-center gap-5">
                                                 <Icon name={item.icon} size={28} />
@@ -279,7 +276,7 @@
                     <div className="fixed bottom-8 left-1/2 -translate-x-1/2 glass-card px-6 py-4 rounded-3xl flex items-center gap-3 border border-white/5 z-40">
                         {loading ? <span className="loader"></span> : <Icon name="refresh-ccw" className="text-blue-400 animate-spin" size={14} />}
                         <span className="text-[10px] font-black text-white uppercase tracking-widest leading-none">
-                            {loading ? 'GÖNDERİLİYOR' : 'CANLI SENKRONİZASYON'}
+                            {loading ? 'İŞLENİYOR' : 'CANLI BULUT BAĞLANTISI'}
                         </span>
                     </div>
                 </div>

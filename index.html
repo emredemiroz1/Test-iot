@@ -276,7 +276,7 @@
         return () => { unsubHome(); unsubSera(); unsubPark(); };
       }, [user]);
 
-      // SERA SİMÜLASYON MOTORU (GÜNCELLENDİ: FAN NEMİ DE DÜŞÜRÜYOR)
+      // SERA SİMÜLASYON MOTORU (Tolerans Paylı Histerezis Mantığı)
       useEffect(() => {
         if (!user || projectMode !== "greenhouse") return;
         
@@ -290,16 +290,19 @@
           if (h > 100 || h < 0) { h = 45; changed = true; }
 
           if (current.auto) {
-            // OTONOM MOD
-            // Sıcaklık Kontrolü
-            if (t > current.targetTemp) { t -= 1; changed = true; } 
-            else if (t < current.targetTemp && Math.random() > 0.5) { t += 1; changed = true; } 
+            // OTONOM MOD: ±1°C ve ±2% tolerans (esneklik) payı ile çalışır.
             
-            // Nem Kontrolü
-            if (h < current.targetHum) { 
-              h += 2; changed = true; // Pompa çalışıyor, nem artıyor
+            // Sıcaklık Kontrolü (Hassasiyet payı eklendi)
+            if (t > current.targetTemp + 1) { 
+              t -= 1; changed = true; // Soğutma
+            } else if (t < current.targetTemp - 1 && Math.random() > 0.5) { 
+              t += 1; changed = true; // Doğal Isınma
             } 
-            else if (h > current.targetHum) { 
+            
+            // Nem Kontrolü (Hassasiyet payı eklendi)
+            if (h < current.targetHum - 2) { 
+              h += 2; changed = true; // Pompa çalışıyor, nem artıyor
+            } else if (h > current.targetHum + 2) { 
               h -= 2; changed = true; // Nem çok yüksek! Fan çalışarak nemi tahliye ediyor
             }
           } else {
@@ -495,7 +498,7 @@
                   {loading && <span className="loader border-green-500"></span>}
                 </div>
 
-                {/* GÜNCELLENEN OTONOM MOD BİLGİ PANELİ (Fanın Nemi Düşürme Mantığı Eklendi) */}
+                {/* GÜNCELLENEN OTONOM MOD BİLGİ PANELİ (Tolerans Paylı Görünüm) */}
                 <div className="mb-4">
                   {seraData.auto ? (
                     <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm transition-all">
@@ -504,19 +507,19 @@
                       </div>
                       
                       <div className="space-y-2">
-                        {/* Sıcaklık Durumları */}
-                        {seraData.temp > seraData.targetTemp ? (
+                        {/* Sıcaklık Durumları (±1°C Histerezis) */}
+                        {seraData.temp > seraData.targetTemp + 1 ? (
                           <div className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Sıcaklık hedefin üzerinde! Fan çalışıyor.</div>
-                        ) : seraData.temp < seraData.targetTemp ? (
+                        ) : seraData.temp < seraData.targetTemp - 1 ? (
                           <div className="text-amber-400 flex items-center gap-2"><span>☀️</span> Sıcaklık düşük. Doğal ısınma bekleniyor.</div>
                         ) : (
                           <div className="text-emerald-400 flex items-center gap-2"><span>✅</span> Sıcaklık tam hedeflenen değerde.</div>
                         )}
 
-                        {/* Nem Durumları (GÜNCELLENDİ) */}
-                        {seraData.hum < seraData.targetHum ? (
+                        {/* Nem Durumları (±2% Histerezis) */}
+                        {seraData.hum < seraData.targetHum - 2 ? (
                           <div className="text-blue-400 flex items-center gap-2"><span className="animate-bounce">💧</span> Nem hedefin altında! Pompa çalışıyor.</div>
-                        ) : seraData.hum > seraData.targetHum ? (
+                        ) : seraData.hum > seraData.targetHum + 2 ? (
                           <div className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Nem yüksek! Fan çalışıyor (Tahliye yapılıyor).</div>
                         ) : (
                           <div className="text-emerald-400 flex items-center gap-2"><span>✅</span> Nem tam hedeflenen değerde.</div>
@@ -540,8 +543,9 @@
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 mb-6">
-                  <SensorCard title="Sıcaklık" value={seraData.temp} unit="°C" emoji="🌡️" colorClass={seraData.temp > seraData.targetTemp ? "border-red-500/50 bg-red-500/10" : ""} />
-                  <SensorCard title="Nem" value={seraData.hum} unit="%" emoji="💧" colorClass={seraData.hum < seraData.targetHum ? "border-amber-500/50 bg-amber-500/10" : ""} />
+                  {/* Kart UYARI renkleri de toleransa göre düzeltildi */}
+                  <SensorCard title="Sıcaklık" value={seraData.temp} unit="°C" emoji="🌡️" colorClass={seraData.temp > seraData.targetTemp + 1 ? "border-red-500/50 bg-red-500/10" : ""} />
+                  <SensorCard title="Nem" value={seraData.hum} unit="%" emoji="💧" colorClass={seraData.hum < seraData.targetHum - 2 ? "border-amber-500/50 bg-amber-500/10" : ""} />
                 </div>
 
                 <div className="glass-panel rounded-2xl p-5 mb-4 border border-white/5">

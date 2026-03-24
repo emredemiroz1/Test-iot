@@ -234,47 +234,67 @@
       );
     }
 
+    // YENİDEN TASARLANAN 6 SLOTLU OTOPARK GÖRSELLEŞTİRİCİ
     function ParkingVisualizer({ data }) {
       return (
-        <div className="mb-6 w-full max-w-[380px] mx-auto animate-[fadeIn_0.5s_ease-out]">
+        <div className="mb-6 w-full max-w-[420px] mx-auto animate-[fadeIn_0.5s_ease-out]">
           <div className="text-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
-            <span>👁️</span> Dijital Otopark İkizi
+            <span>👁️</span> Dijital Otopark İkizi (6 Kapasite)
           </div>
           <div className="w-full bg-[#1e293b] rounded-[32px] border-4 border-[#334155] p-4 shadow-xl flex flex-col relative overflow-hidden">
              
-             {/* 4 Slot Grid */}
-             <div className="flex-1 bg-[#0f172a] rounded-xl border border-white/5 relative grid grid-cols-2 grid-rows-2 h-44 mb-5">
+             {/* 6 Slot Grid (3 Sütun, 2 Satır) */}
+             <div className="flex-1 bg-[#0f172a] rounded-xl border border-white/5 relative grid grid-cols-3 grid-rows-2 h-48 mb-6">
                {/* Grid Çizgileri */}
-               <div className="absolute top-0 bottom-0 left-1/2 w-px bg-white/10 border-dashed"></div>
+               <div className="absolute top-0 bottom-0 left-1/3 w-px bg-white/10 border-dashed"></div>
+               <div className="absolute top-0 bottom-0 left-2/3 w-px bg-white/10 border-dashed"></div>
                <div className="absolute left-0 right-0 top-1/2 h-px bg-white/10 border-dashed"></div>
                
-               {[0, 2, 1, 3].map((slotIdx, layoutIdx) => {
-                 // Görüntü sırası: SolÜst(P1=0), SağÜst(P3=2), SolAlt(P2=1), SağAlt(P4=3)
+               {[0, 1, 2, 3, 4, 5].map((slotIdx) => {
                  const isFull = data.slots[slotIdx];
                  return (
                    <div key={slotIdx} className="relative flex items-center justify-center h-full w-full">
-                     <div className={`absolute top-2 ${layoutIdx % 2 === 0 ? 'left-3' : 'right-3'} text-[9px] font-black text-slate-600 tracking-widest`}>
+                     <div className="absolute top-2 left-2 text-[9px] font-black text-slate-600 tracking-widest">
                        P{slotIdx+1}
                      </div>
                      {isFull ? (
-                       <div className="text-4xl animate-[fadeIn_0.3s_ease-out]">🚗</div>
+                       <div className="text-3xl animate-[fadeIn_0.3s_ease-out]">🚗</div>
                      ) : (
-                       <div className="text-4xl font-black text-emerald-500/10 select-none">P</div>
+                       <div className="text-3xl font-black text-emerald-500/10 select-none">P</div>
                      )}
                    </div>
                  )
                })}
              </div>
 
-             {/* Bariyer Kapısı Çizgisi */}
-             <div className="h-4 w-full rounded border border-white/10 relative overflow-hidden bg-slate-900 flex-shrink-0">
-               <div className={`absolute inset-0 transition-all duration-500 ${data.gateOpen ? 'bg-emerald-500/20' : 'bg-red-500/40'}`}>
-                 {!data.gateOpen && (
-                   <div className="w-full h-full" style={{backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(239,68,68,0.5) 10px, rgba(239,68,68,0.5) 20px)'}}></div>
-                 )}
+             {/* Ayrı Giriş ve Çıkış Bariyerleri Görseli */}
+             <div className="flex justify-between items-end px-2 gap-6 relative">
+               
+               {/* Giriş Bariyeri */}
+               <div className="flex-1 flex flex-col gap-1 relative">
+                 <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Giriş</div>
+                 <div className="w-full h-3 rounded bg-slate-900 border border-white/10 relative overflow-hidden">
+                   <div className={`absolute inset-0 transition-all duration-500 ${data.entryGateOpen ? 'bg-emerald-500/30' : 'bg-red-500/50'}`}>
+                     {!data.entryGateOpen && (
+                       <div className="w-full h-full" style={{backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 8px, rgba(239,68,68,0.6) 8px, rgba(239,68,68,0.6) 16px)'}}></div>
+                     )}
+                   </div>
+                 </div>
                </div>
-             </div>
 
+               {/* Çıkış Bariyeri */}
+               <div className="flex-1 flex flex-col gap-1 text-right relative">
+                 <div className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1">Çıkış</div>
+                 <div className="w-full h-3 rounded bg-slate-900 border border-white/10 relative overflow-hidden">
+                   <div className={`absolute inset-0 transition-all duration-500 ${data.exitGateOpen ? 'bg-emerald-500/30' : 'bg-red-500/50'}`}>
+                     {!data.exitGateOpen && (
+                       <div className="w-full h-full" style={{backgroundImage: 'repeating-linear-gradient(-45deg, transparent, transparent 8px, rgba(239,68,68,0.6) 8px, rgba(239,68,68,0.6) 16px)'}}></div>
+                     )}
+                   </div>
+                 </div>
+               </div>
+
+             </div>
           </div>
         </div>
       );
@@ -294,22 +314,18 @@
 
       let statusMessages = [];
       if (autoMode) {
-        // Sıcaklık kontrolleri
         if (isTempHigh) statusMessages.push(<div key="t" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Sıcaklık Yüksek! Fan Devrede.</div>);
         else if (isTempLow) statusMessages.push(<div key="tl" className="text-amber-400 flex items-center gap-2"><span>☀️</span> Sıcaklık Düşük. Doğal Isınma Bekleniyor.</div>);
         
-        // Nem kontrolleri
         if (isHumHigh) statusMessages.push(<div key="h" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Nem Yüksek! Tahliye Yapılıyor.</div>);
         else if (isHumLow) {
           if (!waterLow) statusMessages.push(<div key="hl" className="text-blue-400 flex items-center gap-2"><span className="animate-bounce">💧</span> Nem Düşük! Pompa (Nemlendirme) Aktif.</div>);
           else statusMessages.push(<div key="hlw" className="text-red-400 flex items-center gap-2"><span>⚠️</span> Nem Düşük! SU DEPOSU BOŞ!</div>);
         }
         
-        // Toprak kontrolleri
         if (isSoilDry && !waterLow) statusMessages.push(<div key="s" className="text-blue-400 flex items-center gap-2"><span className="animate-bounce">💧</span> Toprak Kuru! Sulama Yapılıyor.</div>);
         else if (isSoilDry && waterLow) statusMessages.push(<div key="sw" className="text-red-400 flex items-center gap-2"><span>⚠️</span> Toprak Kuru! Ancak SU DEPOSU BOŞ!</div>);
         
-        // Hepsi idealse
         if (!isTempHigh && !isTempLow && !isHumHigh && !isHumLow && !isSoilDry) {
           statusMessages.push(<div key="ok" className="text-emerald-400 flex items-center gap-2"><span>✅</span> Ortam Değerleri İdeal Seviyede.</div>);
         }
@@ -387,9 +403,9 @@
       const [loggedIn, setLoggedIn] = useState(false);
       const [errorMsg, setErrorMsg] = useState("");
       const [projectMode, setProjectMode] = useState(null);
-      const [isSimulating, setIsSimulating] = useState(false); // Sunum animasyon kilidi
+      const [isSimulating, setIsSimulating] = useState(false); 
 
-      // Home (Ev Kontrol) State
+      // Home State
       const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
       const [homeSim, setHomeSim] = useState({ power: 120, temp: 23.5 }); 
       
@@ -402,13 +418,17 @@
         right: { ...defaultZone }
       });
 
-      // Otopark State
-      const [parkData, setParkData] = useState({ occupied: 0, slots: [false, false, false, false], gateOpen: false });
+      // Otopark State (6 Kapasite, Çift Bariyer)
+      const [parkData, setParkData] = useState({ 
+        occupied: 0, 
+        slots: Array(6).fill(false), 
+        entryGateOpen: false, 
+        exitGateOpen: false 
+      });
 
       const seraRef = useRef(sera);
       useEffect(() => { seraRef.current = sera; }, [sera]);
 
-      // Su Doldurma Zamanlayıcısı için Referans
       const refillTimerRef = useRef(null);
 
       useEffect(() => {
@@ -425,19 +445,16 @@
         return () => unsub && unsub();
       }, [ready]);
 
-      // Firebase Dinleyicileri (Tüm Projeler İçin)
       useEffect(() => {
         if (!user) return;
         const db = window.FB.db;
         const appId = window.APP_ID;
         
-        // Akıllı Ev Dinleyici
         const unsubHome = window.FB.onSnapshot(
           window.FB.doc(db, "artifacts", appId, "public", "data", "home", "status"),
           (snap) => { if (snap.exists()) setHomeData(prev => ({ ...prev, ...snap.data() })); }
         );
 
-        // Sera Dinleyici
         const unsubSera = window.FB.onSnapshot(
           window.FB.doc(db, "artifacts", appId, "public", "data", "greenhouse", "status"),
           (snap) => {
@@ -484,21 +501,27 @@
             if (snap.exists()) {
               const d = snap.data();
               let occupied = 0;
-              let slots = [false, false, false, false];
-              let gateOpen = false;
+              let slots = Array(6).fill(false);
+              let entryGateOpen = false;
+              let exitGateOpen = false;
 
               if (d.occupied !== undefined) {
                 occupied = d.occupied;
-                slots = d.slots || slots;
-                gateOpen = d.gateOpen || false;
+                if(d.slots && Array.isArray(d.slots)) {
+                    for(let i=0; i<d.slots.length && i<6; i++) slots[i] = d.slots[i];
+                }
+                entryGateOpen = d.entryGateOpen || false;
+                exitGateOpen = d.exitGateOpen || false;
               } else if (d.fields) {
                 occupied = d.fields.occupied?.integerValue ? Number(d.fields.occupied.integerValue) : 0;
-                gateOpen = d.fields.gateOpen?.booleanValue || false;
+                entryGateOpen = d.fields.entryGateOpen?.booleanValue || false;
+                exitGateOpen = d.fields.exitGateOpen?.booleanValue || false;
                 if (d.fields.slots?.arrayValue?.values) {
-                  slots = d.fields.slots.arrayValue.values.map(v => v.booleanValue === true);
+                  let fSlots = d.fields.slots.arrayValue.values.map(v => v.booleanValue === true);
+                  for(let i=0; i<fSlots.length && i<6; i++) slots[i] = fSlots[i];
                 }
               }
-              setParkData({ occupied, slots, gateOpen });
+              setParkData({ occupied, slots, entryGateOpen, exitGateOpen });
             }
           }
         );
@@ -506,7 +529,6 @@
         return () => { unsubHome(); unsubSera(); unsubPark(); };
       }, [user]);
 
-      // Firebase Yazma Fonksiyonları
       const updateSeraFlat = async (field, value) => {
         if (!user) return;
         const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "greenhouse", "status");
@@ -525,22 +547,21 @@
         await window.FB.setDoc(ref, { [field]: value }, { merge: true }).catch(console.error);
       };
 
-      // --- SUNUM İÇİN OTOPARK OTOMATİK SİMÜLASYONU ---
+      // --- OTOPARK SUNUM SİMÜLASYONLARI (GİRİŞ - ÇIKIŞ AYRI) ---
       const simulateParkEntry = async () => {
         if (isSimulating) return;
 
-        // Sensör aracı gördü ama kapasite dolu!
-        if (parkData.occupied >= 4) {
-          setErrorMsg("⚠️ İçeride hiç yer yok! Bariyer açılamaz.");
+        if (parkData.occupied >= 6) {
+          setErrorMsg("⚠️ İçeride hiç yer yok! Giriş bariyeri açılamaz.");
           setTimeout(() => setErrorMsg(""), 4000);
           return;
         }
         
         setIsSimulating(true);
-        // 1. Araç geldi, sensör algıladı, bariyeri aç
-        await togglePark("gateOpen", true);
+        // 1. Araç geldi, sensör algıladı, sadece GİRİŞ bariyerini aç
+        await togglePark("entryGateOpen", true);
 
-        // 2. 1.5 Saniye arabanın geçişini bekle, sonra slota yerleştir
+        // 2. Bekle, arabayı yerleştir
         setTimeout(async () => {
           const newSlots = [...parkData.slots];
           const emptyIdx = newSlots.findIndex(s => !s);
@@ -550,9 +571,9 @@
             await window.FB.setDoc(ref, { slots: newSlots, occupied: parkData.occupied + 1 }, { merge: true });
           }
 
-          // 3. Araba yerleştikten 1.5 saniye sonra güvenlik sensörü bariyeri kapatır
+          // 3. Araba yerleştikten sonra giriş bariyerini kapat
           setTimeout(async () => {
-             await togglePark("gateOpen", false);
+             await togglePark("entryGateOpen", false);
              setIsSimulating(false);
           }, 1500);
 
@@ -564,10 +585,10 @@
         if (parkData.occupied <= 0) return;
         
         setIsSimulating(true);
-        // 1. Çıkış sensörü aracı gördü, bariyeri aç
-        await togglePark("gateOpen", true);
+        // 1. Çıkış sensörü aracı gördü, sadece ÇIKIŞ bariyerini aç
+        await togglePark("exitGateOpen", true);
 
-        // 2. 1.5 sn sonra aracı otoparktan çıkart
+        // 2. Bekle, aracı çıkart
         setTimeout(async () => {
           const newSlots = [...parkData.slots];
           const fullIdx = newSlots.findLastIndex(s => s === true);
@@ -577,24 +598,28 @@
             await window.FB.setDoc(ref, { slots: newSlots, occupied: parkData.occupied - 1 }, { merge: true });
           }
 
-          // 3. Araba çıktıktan sonra bariyeri kapat
+          // 3. Araba çıktıktan sonra çıkış bariyerini kapat
           setTimeout(async () => {
-             await togglePark("gateOpen", false);
+             await togglePark("exitGateOpen", false);
              setIsSimulating(false);
           }, 1500);
 
         }, 1500);
       };
 
-      // Manuel Bariyer Kontrolü (Doluysa engelleme özelliği ile)
-      const handleManualGateToggle = async () => {
+      const handleManualEntryGateToggle = async () => {
         if (isSimulating) return;
-        if (!parkData.gateOpen && parkData.occupied >= 4) {
-          setErrorMsg("⚠️ İçeride hiç yer yok! Bariyer açılamaz.");
+        if (!parkData.entryGateOpen && parkData.occupied >= 6) {
+          setErrorMsg("⚠️ İçeride hiç yer yok! Giriş bariyeri açılamaz.");
           setTimeout(() => setErrorMsg(""), 4000);
           return;
         }
-        await togglePark("gateOpen", !parkData.gateOpen);
+        await togglePark("entryGateOpen", !parkData.entryGateOpen);
+      };
+
+      const handleManualExitGateToggle = async () => {
+        if (isSimulating) return;
+        await togglePark("exitGateOpen", !parkData.exitGateOpen);
       };
 
       // EV SİMÜLASYONU 
@@ -630,20 +655,14 @@
           const waterLow = current.waterLevel < 15;
           let newWaterLevel = current.waterLevel;
 
-          // --- SU DEPOSU OTOMATİK DOLUM SİMÜLASYONU ---
           if (waterLow) {
-            if (!refillTimerRef.current) {
-              refillTimerRef.current = Date.now(); // Sayaç başladı
-            } else if (Date.now() - refillTimerRef.current >= 10000) {
-              // 10 saniye doldu, depoyu fulle
+            if (!refillTimerRef.current) refillTimerRef.current = Date.now(); 
+            else if (Date.now() - refillTimerRef.current >= 10000) {
               newWaterLevel = 100;
               refillTimerRef.current = null;
             }
-          } else {
-            refillTimerRef.current = null;
-          }
+          } else refillTimerRef.current = null;
 
-          // Doğal buharlaşma
           if (newWaterLevel > 0 && Math.random() > 0.8 && !waterLow) newWaterLevel -= 1;
           if (newWaterLevel !== current.waterLevel) changedData.waterLevel = newWaterLevel;
 
@@ -662,16 +681,12 @@
             if (waterLow && pump) pump = false;
 
             if (pump) {
-              s += 1.5; 
-              h += 2; 
+              s += 1.5; h += 2; 
               if (newWaterLevel > 0) newWaterLevel -= 0.5; 
-            } else if (s > 20 && Math.random() > 0.5) {
-              s -= 0.5; 
-            }
+            } else if (s > 20 && Math.random() > 0.5) s -= 0.5; 
 
             if (fan) {
-              t -= 1; 
-              h -= 1; 
+              t -= 1; h -= 1; 
             } else {
               if (t < 35 && Math.random() > 0.6) t += 0.5; 
               if (h > 30 && Math.random() > 0.7) h -= 0.5; 
@@ -860,21 +875,21 @@
               </div>
             )}
 
-            {/* 🅿️ AKILLI OTOPARK PROJESİ */}
+            {/* 🅿️ AKILLI OTOPARK PROJESİ (6 KAPASİTE + GİRİŞ/ÇIKIŞ AYRI) */}
             {projectMode === "parking" && (
-              <div className="max-w-md mx-auto animate-[fadeIn_0.3s_ease-out]">
+              <div className="max-w-3xl mx-auto animate-[fadeIn_0.3s_ease-out]">
                 
                 {/* Otopark Dijital İkiz */}
                 <ParkingVisualizer data={parkData} />
 
                 {errorMsg && (
-                  <div className="mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center text-sm font-bold shadow-lg animate-[fadeIn_0.2s_ease-out]">
+                  <div className="max-w-md mx-auto mb-4 p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-center text-sm font-bold shadow-lg animate-[fadeIn_0.2s_ease-out]">
                     {errorMsg}
                   </div>
                 )}
 
                 {/* SUNUM KONTROLLERİ (SİMÜLASYON BUTONLARI) */}
-                <div className="glass-panel rounded-[24px] p-5 mb-6 border border-white/5 shadow-xl">
+                <div className="max-w-md mx-auto glass-panel rounded-[24px] p-5 mb-6 border border-white/5 shadow-xl">
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center justify-center gap-2">
                     <span>🎬</span> Sunum Simülasyonu
                   </h3>
@@ -898,46 +913,65 @@
                   </div>
                 </div>
 
-                {/* Bariyer Kontrolü */}
-                <div className="mb-6">
+                {/* AYRI GİRİŞ VE ÇIKIŞ BARİYER KONTROLLERİ */}
+                <div className="max-w-md mx-auto grid grid-cols-2 gap-4 mb-6">
+                  {/* GİRİŞ BARİYERİ */}
                   <button
-                    onClick={handleManualGateToggle}
+                    onClick={handleManualEntryGateToggle}
                     disabled={isSimulating}
-                    className={`w-full rounded-2xl p-5 flex items-center justify-between border btn-touch transition-all shadow-lg ${
-                      parkData.gateOpen ? "bg-emerald-900/40 border-emerald-500/50" : "bg-red-900/40 border-red-500/50"
+                    className={`rounded-2xl p-4 flex flex-col items-center justify-center gap-3 border btn-touch transition-all shadow-lg ${
+                      parkData.entryGateOpen ? "bg-emerald-900/40 border-emerald-500/50" : "bg-red-900/40 border-red-500/50"
                     } ${isSimulating ? 'opacity-50 cursor-not-allowed' : ''}`}
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="text-3xl">🚧</div>
-                      <div className="text-left">
-                        <div className={`text-sm font-black uppercase tracking-wider ${parkData.gateOpen ? 'text-emerald-400' : 'text-red-400'}`}>Giriş Bariyeri</div>
-                        <div className="text-[10px] text-white/70">
-                          {isSimulating ? "Araç Geçişi Bekleniyor..." : parkData.gateOpen ? "Bariyer Açık - Geçiş Serbest" : "Bariyer Kapalı - Araç Giremez"}
-                        </div>
+                    <div className="text-3xl">🚧</div>
+                    <div className="text-center">
+                      <div className={`text-xs font-black uppercase tracking-wider ${parkData.entryGateOpen ? 'text-emerald-400' : 'text-red-400'}`}>Giriş Bariyeri</div>
+                      <div className="text-[9px] text-white/50 mt-1">
+                        {isSimulating ? "İşlem Bekleniyor..." : parkData.entryGateOpen ? "Açık - Serbest" : "Kapalı - Dur"}
                       </div>
                     </div>
-                    <div className={`w-12 h-6 rounded-full p-1 transition-all ${parkData.gateOpen ? "bg-emerald-500" : "bg-red-500"}`}>
-                      <div className={`w-4 h-4 bg-white rounded-full transition-all ${parkData.gateOpen ? "translate-x-6" : "translate-x-0"}`}></div>
+                    <div className={`w-10 h-5 rounded-full p-1 transition-all ${parkData.entryGateOpen ? "bg-emerald-500" : "bg-red-500"}`}>
+                      <div className={`w-3 h-3 bg-white rounded-full transition-all ${parkData.entryGateOpen ? "translate-x-5" : "translate-x-0"}`}></div>
+                    </div>
+                  </button>
+
+                  {/* ÇIKIŞ BARİYERİ */}
+                  <button
+                    onClick={handleManualExitGateToggle}
+                    disabled={isSimulating}
+                    className={`rounded-2xl p-4 flex flex-col items-center justify-center gap-3 border btn-touch transition-all shadow-lg ${
+                      parkData.exitGateOpen ? "bg-emerald-900/40 border-emerald-500/50" : "bg-red-900/40 border-red-500/50"
+                    } ${isSimulating ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  >
+                    <div className="text-3xl">🚧</div>
+                    <div className="text-center">
+                      <div className={`text-xs font-black uppercase tracking-wider ${parkData.exitGateOpen ? 'text-emerald-400' : 'text-red-400'}`}>Çıkış Bariyeri</div>
+                      <div className="text-[9px] text-white/50 mt-1">
+                        {isSimulating ? "İşlem Bekleniyor..." : parkData.exitGateOpen ? "Açık - Serbest" : "Kapalı - Dur"}
+                      </div>
+                    </div>
+                    <div className={`w-10 h-5 rounded-full p-1 transition-all ${parkData.exitGateOpen ? "bg-emerald-500" : "bg-red-500"}`}>
+                      <div className={`w-3 h-3 bg-white rounded-full transition-all ${parkData.exitGateOpen ? "translate-x-5" : "translate-x-0"}`}></div>
                     </div>
                   </button>
                 </div>
 
-                <div className="glass-panel rounded-[24px] p-6 text-center mb-6 border border-white/5 shadow-xl relative overflow-hidden">
+                <div className="max-w-md mx-auto glass-panel rounded-[24px] p-6 text-center mb-6 border border-white/5 shadow-xl relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-500"></div>
                   <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Anlık Kapasite Durumu</h3>
                   <div className="text-6xl mb-2 font-black flex items-center justify-center gap-2">
-                    <span className={parkData.occupied >= 4 ? "text-red-400" : "text-cyan-400"}>{4 - parkData.occupied}</span>
+                    <span className={parkData.occupied >= 6 ? "text-red-400" : "text-cyan-400"}>{6 - parkData.occupied}</span>
                     <span className="text-slate-600 text-4xl">/</span>
-                    <span className="text-slate-500 text-5xl">4</span>
+                    <span className="text-slate-500 text-5xl">6</span>
                   </div>
                   <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
                     Müsait Park Yeri
                   </div>
                 </div>
 
-                {/* Park Slotları */}
-                <div className="grid grid-cols-2 gap-4">
-                  {[0, 1, 2, 3].map((index) => {
+                {/* 6'LI PARK SLOTLARI EKRANI */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                  {[0, 1, 2, 3, 4, 5].map((index) => {
                     const isFull = parkData.slots[index];
                     return (
                       <div key={index} className={`relative rounded-2xl p-6 border flex flex-col items-center justify-center gap-3 transition-colors shadow-lg ${

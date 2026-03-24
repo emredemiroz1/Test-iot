@@ -317,24 +317,41 @@
             <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl relative overflow-hidden border border-slate-200">
               <div className="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
               
-              <div className="text-center mb-8 mt-4">
-                {/* LOGO: mucit_logo.png dosyasını projenin bulunduğu klasöre koyabilirsiniz */}
-                <img 
-                  src="mucit_logo.png" 
-                  alt="Mucit Akademisi" 
-                  className="mx-auto h-24 object-contain mb-2"
-                  onError={(e) => {
-                    e.target.style.display = 'none';
-                    e.target.nextSibling.style.display = 'block';
-                  }}
-                />
-                {/* LOGO BULUNAMAZSA GÖSTERİLECEK YAZI (Yedek) */}
-                <div style={{ display: 'none' }} className="mb-4">
-                  <div className="text-5xl mb-2">🎓</div>
-                  <h1 className="text-center text-4xl font-black tracking-tighter text-slate-900 leading-[1]">
-                    MUCİT<br/><span className="text-blue-600">AKADEMİSİ</span>
-                  </h1>
+              <div className="text-center mb-8 mt-4 flex flex-col items-center">
+                {/* LOGO ALANI */}
+                <div className="mb-3 flex justify-center w-full">
+                  <img 
+                    src="mucit_logo.png" 
+                    alt="Mucit Akademisi Logo" 
+                    className="h-32 object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      e.target.nextSibling.style.display = 'block';
+                    }}
+                  />
+                  {/* SVG YEDEK LOGO (Eğer mucit_logo.png dosyası klasörde yoksa kodla çizilmiş orijinal logonuz devreye girer) */}
+                  <div style={{ display: 'none' }}>
+                    <svg width="80" height="110" viewBox="0 0 100 120" className="drop-shadow-md">
+                      {/* Şapka */}
+                      <polygon points="50,10 90,25 50,40 10,25" fill="#1d70b8" />
+                      <polygon points="25,30 25,45 50,55 75,45 75,30 50,40" fill="#1d70b8" />
+                      {/* Ampul ve Püskül */}
+                      <line x1="15" y1="25" x2="15" y2="55" stroke="#1d70b8" strokeWidth="3" />
+                      <circle cx="15" cy="60" r="7" fill="#1d70b8" />
+                      <circle cx="15" cy="60" r="3" fill="#ffffff" />
+                      {/* M Harfi */}
+                      <path d="M 30,45 L 30,75 L 50,60 L 70,75 L 70,45" fill="none" stroke="#000000" strokeWidth="14" strokeLinejoin="miter" strokeLinecap="square" />
+                      {/* A Harfi / Kalem Ucu */}
+                      <path d="M 30,85 L 50,115 L 70,85 Z" fill="#1d70b8" />
+                      <path d="M 42,95 L 58,95" fill="none" stroke="#ffffff" strokeWidth="4" />
+                    </svg>
+                  </div>
                 </div>
+
+                {/* YAZI KISMI (Logonun altında her zaman görünür) */}
+                <h1 className="text-center text-4xl font-black tracking-tighter text-slate-900 leading-[1.1]">
+                  MUCİT<br/><span className="text-blue-600">AKADEMİSİ</span>
+                </h1>
               </div>
 
               <input

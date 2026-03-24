@@ -119,7 +119,6 @@
       );
     }
 
-    // Modern Ev Butonu
     function ModernWidget({ title, subtitle, icon, active, onClick, colorClass }) {
       return (
         <button 
@@ -142,7 +141,6 @@
 
     // --- GÖRSEL DİJİTAL İKİZLER ---
 
-    // 1. Akıllı Ev Görselleştirici
     function HomeVisualizer({ data }) {
       return (
         <div className="mb-8 w-full max-w-[380px] mx-auto animate-[fadeIn_0.5s_ease-out]">
@@ -150,12 +148,8 @@
             <span>👁️</span> Dijital Ev İkizi
           </div>
           <div className="w-full bg-slate-900/90 rounded-[32px] border-4 border-slate-800 p-4 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden h-[240px]">
-            {/* Çatı */}
             <div className="w-0 h-0 border-l-[160px] border-r-[160px] border-b-[60px] border-l-transparent border-r-transparent border-b-slate-800 mx-auto relative mb-2"></div>
-            
-            {/* Ev Gövdesi */}
             <div className="flex-1 bg-slate-800 rounded-lg flex flex-col border border-white/5 relative">
-              {/* Üst Kat (Salon & Mutfak) */}
               <div className="flex-1 flex border-b border-white/5">
                 <div className={`flex-1 border-r border-white/5 flex items-center justify-center transition-colors duration-500 ${data.light ? 'bg-amber-500/20' : 'bg-transparent'}`}>
                   <div className={`w-12 h-12 border-2 rounded ${data.light ? 'border-amber-400 bg-amber-400/40 shadow-[0_0_20px_#fbbf24]' : 'border-slate-600 bg-slate-700/50'}`}></div>
@@ -164,7 +158,6 @@
                   <div className={`w-10 h-10 border-2 rounded-full ${data.kitchen ? 'border-blue-400 bg-blue-400/40 shadow-[0_0_20px_#60a5fa]' : 'border-slate-600 bg-slate-700/50'}`}></div>
                 </div>
               </div>
-              {/* Alt Kat (Kapı & Klima & Priz) */}
               <div className="flex-1 flex">
                  <div className={`flex-1 flex items-center justify-center border-r border-white/5 transition-colors duration-500 ${data.ac ? 'bg-cyan-500/10' : 'bg-transparent'}`}>
                     <div className="w-8 h-12 bg-slate-900 rounded-t-lg border border-slate-700 mt-auto"></div>
@@ -175,21 +168,18 @@
                  </div>
               </div>
             </div>
-
-            {/* Bahçe */}
             <div className={`absolute bottom-0 left-0 w-full h-4 transition-colors duration-500 ${data.garden ? 'bg-emerald-500/40 shadow-[0_-10px_20px_rgba(16,185,129,0.3)]' : 'bg-slate-800'}`}></div>
           </div>
         </div>
       );
     }
 
-    // 2. Akıllı Sera Görselleştirici
     function GreenhouseVisualizer({ left, right }) {
       const ZoneVisual = ({ title, data }) => {
         const isHot = data.temp > data.targetTemp;
         const isCold = data.temp < data.targetTemp;
         const isDry = data.soil < data.targetSoil;
-        const isHumid = data.hum > data.targetHum;
+        // const isHumid = data.hum > data.targetHum; // Removed unused variable to clean up, but keeping for logic reference
 
         let airBg = "bg-emerald-500/5 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]";
         if (isHot) airBg = "bg-red-500/20 shadow-[inset_0_0_30px_rgba(239,68,68,0.2)]";
@@ -213,13 +203,13 @@
                 {data.fan ? '🌀' : isHot ? '🔥' : isCold ? '☀️' : '✅'}
               </div>
               <div className="text-[8px] font-bold mt-2 opacity-70 tracking-widest uppercase text-center">
-                {data.fan ? 'Soğutuluyor' : isHot ? 'Sıcak' : isCold ? 'Doğal Isınma' : 'İdeal Isı'}
+                {data.fan ? 'Soğutuluyor/Tahliye' : isHot ? 'Sıcak' : isCold ? 'Doğal Isınma' : 'İdeal Hava'}
               </div>
             </div>
             <div className={`h-1/3 relative flex flex-col items-center justify-center border-t border-white/10 transition-colors duration-700 ${soilBg}`}>
               <div className={`absolute -top-4 text-xl transition-all duration-300 ${data.pump ? 'text-blue-400 animate-bounce opacity-100' : 'opacity-0'}`}>💧</div>
               <div className="text-2xl opacity-90 transition-all">{isDry ? '🏜️' : data.pump ? '🌧️' : '🪴'}</div>
-              <div className="text-[8px] font-bold mt-1 opacity-70 tracking-widest uppercase">{isDry ? 'Toprak Kuru' : data.pump ? 'Sulanıyor' : 'Toprak Nemli'}</div>
+              <div className="text-[8px] font-bold mt-1 opacity-70 tracking-widest uppercase">{isDry ? 'Toprak Kuru' : data.pump ? 'Sulanıyor/Nem' : 'Toprak Nemli'}</div>
             </div>
           </div>
         );
@@ -245,7 +235,6 @@
       );
     }
 
-    // 3. Akıllı Otopark Görselleştirici
     function ParkingVisualizer({ data }) {
       return (
         <div className="mb-8 w-full max-w-[380px] mx-auto animate-[fadeIn_0.5s_ease-out]">
@@ -257,17 +246,13 @@
              <div className="absolute left-0 bottom-4 w-full h-8 flex items-center px-4">
                 <div className="w-6 h-6 bg-slate-900 rounded border border-white/10 z-20"></div>
                 <div className={`h-2 flex-1 origin-left transition-transform duration-1000 z-10 ${data.gateOpen ? '-rotate-90 bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'rotate-0 bg-red-500 shadow-[0_0_10px_#ef4444]'}`}>
-                    {/* Çizgiler */}
                     <div className="w-full h-full" style={{backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.5) 10px, rgba(255,255,255,0.5) 20px)'}}></div>
                 </div>
              </div>
 
              {/* Asfalt ve Slotlar */}
              <div className="flex-1 bg-slate-900 rounded-[18px] flex border-2 border-slate-700 relative overflow-hidden mb-8">
-                {/* Orta Yol Çizgisi */}
                 <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 border-l-2 border-dashed border-white/20"></div>
-                
-                {/* Sol Slotlar (P1, P2) */}
                 <div className="flex-1 flex flex-col">
                   {[0, 1].map(i => (
                     <div key={i} className="flex-1 border-b-2 border-dashed border-white/20 flex items-center justify-center relative">
@@ -277,8 +262,6 @@
                     </div>
                   ))}
                 </div>
-
-                {/* Sağ Slotlar (P3, P4) */}
                 <div className="flex-1 flex flex-col">
                   {[2, 3].map(i => (
                     <div key={i} className="flex-1 border-b-2 border-dashed border-white/20 flex items-center justify-center relative">
@@ -308,17 +291,27 @@
 
       let statusMessages = [];
       if (autoMode) {
+        // Sıcaklık kontrolleri
         if (isTempHigh) statusMessages.push(<div key="t" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Sıcaklık Yüksek! Fan Devrede.</div>);
         else if (isTempLow) statusMessages.push(<div key="tl" className="text-amber-400 flex items-center gap-2"><span>☀️</span> Sıcaklık Düşük. Doğal Isınma Bekleniyor.</div>);
         
+        // Nem kontrolleri
         if (isHumHigh) statusMessages.push(<div key="h" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Nem Yüksek! Tahliye Yapılıyor.</div>);
+        else if (isHumLow) {
+          if (!waterLow) statusMessages.push(<div key="hl" className="text-blue-400 flex items-center gap-2"><span className="animate-bounce">💧</span> Nem Düşük! Pompa (Nemlendirme) Aktif.</div>);
+          else statusMessages.push(<div key="hlw" className="text-red-400 flex items-center gap-2"><span>⚠️</span> Nem Düşük! SU DEPOSU BOŞ!</div>);
+        }
         
+        // Toprak kontrolleri
         if (isSoilDry && !waterLow) statusMessages.push(<div key="s" className="text-blue-400 flex items-center gap-2"><span className="animate-bounce">💧</span> Toprak Kuru! Sulama Yapılıyor.</div>);
         else if (isSoilDry && waterLow) statusMessages.push(<div key="sw" className="text-red-400 flex items-center gap-2"><span>⚠️</span> Toprak Kuru! Ancak SU DEPOSU BOŞ!</div>);
         
-        if (!isTempHigh && !isTempLow && !isHumHigh && !isSoilDry) statusMessages.push(<div key="ok" className="text-emerald-400 flex items-center gap-2"><span>✅</span> Ortam Değerleri İdeal Seviyede.</div>);
+        // Hepsi idealse
+        if (!isTempHigh && !isTempLow && !isHumHigh && !isHumLow && !isSoilDry) {
+          statusMessages.push(<div key="ok" className="text-emerald-400 flex items-center gap-2"><span>✅</span> Ortam Değerleri İdeal Seviyede.</div>);
+        }
       } else {
-        if (pump) statusMessages.push(<div key="mp" className="text-blue-400 flex items-center gap-2">💧 Manuel Sulama Aktif...</div>);
+        if (pump) statusMessages.push(<div key="mp" className="text-blue-400 flex items-center gap-2">💧 Manuel Sulama/Nemlendirme Aktif...</div>);
         if (fan) statusMessages.push(<div key="mf" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Manuel Fan Aktif...</div>);
         if (!pump && !fan) statusMessages.push(<div key="mn" className="text-slate-400 flex items-center gap-2">🔧 Sistem Manuel Beklemede.</div>);
       }
@@ -394,7 +387,7 @@
 
       // Home (Ev Kontrol) State
       const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
-      const [homeSim, setHomeSim] = useState({ power: 120, temp: 23.5 }); // Simüle edilen anlık veriler
+      const [homeSim, setHomeSim] = useState({ power: 120, temp: 23.5 }); 
       
       // Sera State
       const defaultZone = { temp: 24, hum: 45, soil: 60, pump: false, fan: false, targetTemp: 26, targetHum: 50, targetSoil: 60 };
@@ -525,18 +518,17 @@
         await window.FB.setDoc(ref, { [field]: value }, { merge: true }).catch(console.error);
       };
 
-      // EV SİMÜLASYONU (Güç ve Sıcaklık Tüketimi)
+      // EV SİMÜLASYONU 
       useEffect(() => {
         if (projectMode !== "home") return;
         const interval = setInterval(() => {
-           let power = 50; // Temel tüketim
+           let power = 50; 
            if(homeData.light) power += 40;
            if(homeData.kitchen) power += 60;
            if(homeData.plug) power += 150;
            if(homeData.ac) power += 1200;
            if(homeData.garden) power += 80;
            
-           // Dalgalanma
            power += Math.floor(Math.random() * 20);
 
            setHomeSim(prev => {
@@ -549,7 +541,7 @@
         return () => clearInterval(interval);
       }, [projectMode, homeData]);
 
-      // SERA SİMÜLASYONU (Tam Hedef Odaklı & Atlamasız)
+      // SERA SİMÜLASYONU (GÜNCELLENDİ: Hedeften sapma ve düşük nem kontrolü iyileştirildi)
       useEffect(() => {
         if (!user || projectMode !== "greenhouse") return;
         
@@ -567,18 +559,20 @@
             let { temp: t, hum: h, soil: s, pump, fan, targetTemp, targetHum, targetSoil } = z;
 
             if (current.auto) {
+              // Sıcaklık veya Nem Yüksekse FAN AÇ
               if (t > targetTemp || h > targetHum) fan = true;
               else if (t <= targetTemp && h <= targetHum) fan = false;
 
-              if (s < targetSoil) pump = true;
-              else if (s >= targetSoil) pump = false;
+              // Toprak kuruysa veya Nem düşükse POMPA AÇ
+              if (s < targetSoil || h < targetHum) pump = true;
+              else if (s >= targetSoil && h >= targetHum) pump = false;
             }
 
             if (waterLow && pump) pump = false;
 
             if (pump) {
-              s += 2; 
-              h += 1; 
+              s += 1.5; 
+              h += 2; // Pompa nemi hızlı artırır
               if (newWaterLevel > 0) newWaterLevel -= 0.5; 
             } else if (s > 20 && Math.random() > 0.5) {
               s -= 0.5; 
@@ -586,7 +580,7 @@
 
             if (fan) {
               t -= 1; 
-              h -= 2; 
+              h -= 1; // Fanla pompa aynı anda açıksa nem yine de yavaşça artar (+2 -1 = +1)
             } else {
               if (t < 35 && Math.random() > 0.6) t += 0.5; 
               if (h > 30 && Math.random() > 0.7) h -= 0.5; 

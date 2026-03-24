@@ -35,7 +35,6 @@
       transform: scale(0.96);
     }
 
-    /* Animasyonlar */
     @keyframes pulse-border {
       0% { border-color: rgba(239, 68, 68, 0.3); box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.2); }
       50% { border-color: rgba(239, 68, 68, 0.8); box-shadow: 0 0 10px 0 rgba(239, 68, 68, 0.4); }
@@ -120,44 +119,96 @@
       );
     }
 
-    // --- YENİ BİLEŞEN: GÖRSEL DİJİTAL İKİZ (SERA SİMÜLATÖRÜ) ---
+    // Modern Ev Butonu
+    function ModernWidget({ title, subtitle, icon, active, onClick, colorClass }) {
+      return (
+        <button 
+          onClick={onClick} 
+          className={`relative overflow-hidden p-4 rounded-[20px] border text-left btn-touch transition-all duration-300 ${
+            active ? colorClass : 'bg-slate-800/50 border-white/5 text-slate-400'
+          }`}
+        >
+          <div className="flex justify-between items-start mb-4">
+             <div className={`text-3xl transition-transform duration-300 ${active ? 'scale-110' : 'grayscale opacity-50'}`}>{icon}</div>
+             <div className={`w-10 h-6 rounded-full p-1 transition-all ${active ? 'bg-white/30' : 'bg-slate-700'}`}>
+                <div className={`w-4 h-4 bg-white rounded-full transition-all shadow-sm ${active ? 'translate-x-4' : 'translate-x-0'}`}></div>
+             </div>
+          </div>
+          <div className={`font-bold text-sm tracking-wide ${active ? 'text-white' : 'text-slate-300'}`}>{title}</div>
+          <div className="text-[9px] uppercase tracking-widest opacity-70 mt-1">{subtitle}</div>
+        </button>
+      );
+    }
+
+    // --- GÖRSEL DİJİTAL İKİZLER ---
+
+    // 1. Akıllı Ev Görselleştirici
+    function HomeVisualizer({ data }) {
+      return (
+        <div className="mb-8 w-full max-w-[380px] mx-auto animate-[fadeIn_0.5s_ease-out]">
+          <div className="text-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
+            <span>👁️</span> Dijital Ev İkizi
+          </div>
+          <div className="w-full bg-slate-900/90 rounded-[32px] border-4 border-slate-800 p-4 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden h-[240px]">
+            {/* Çatı */}
+            <div className="w-0 h-0 border-l-[160px] border-r-[160px] border-b-[60px] border-l-transparent border-r-transparent border-b-slate-800 mx-auto relative mb-2"></div>
+            
+            {/* Ev Gövdesi */}
+            <div className="flex-1 bg-slate-800 rounded-lg flex flex-col border border-white/5 relative">
+              {/* Üst Kat (Salon & Mutfak) */}
+              <div className="flex-1 flex border-b border-white/5">
+                <div className={`flex-1 border-r border-white/5 flex items-center justify-center transition-colors duration-500 ${data.light ? 'bg-amber-500/20' : 'bg-transparent'}`}>
+                  <div className={`w-12 h-12 border-2 rounded ${data.light ? 'border-amber-400 bg-amber-400/40 shadow-[0_0_20px_#fbbf24]' : 'border-slate-600 bg-slate-700/50'}`}></div>
+                </div>
+                <div className={`flex-1 flex items-center justify-center transition-colors duration-500 ${data.kitchen ? 'bg-blue-500/20' : 'bg-transparent'}`}>
+                  <div className={`w-10 h-10 border-2 rounded-full ${data.kitchen ? 'border-blue-400 bg-blue-400/40 shadow-[0_0_20px_#60a5fa]' : 'border-slate-600 bg-slate-700/50'}`}></div>
+                </div>
+              </div>
+              {/* Alt Kat (Kapı & Klima & Priz) */}
+              <div className="flex-1 flex">
+                 <div className={`flex-1 flex items-center justify-center border-r border-white/5 transition-colors duration-500 ${data.ac ? 'bg-cyan-500/10' : 'bg-transparent'}`}>
+                    <div className="w-8 h-12 bg-slate-900 rounded-t-lg border border-slate-700 mt-auto"></div>
+                 </div>
+                 <div className="flex-1 flex items-center justify-center gap-4 relative">
+                    <div className={`text-2xl transition-all duration-500 ${data.ac ? 'text-cyan-400 animate-pulse' : 'text-slate-600 opacity-30'}`}>❄️</div>
+                    <div className={`text-2xl transition-all duration-500 ${data.plug ? 'text-emerald-400' : 'text-slate-600 opacity-30'}`}>🔌</div>
+                 </div>
+              </div>
+            </div>
+
+            {/* Bahçe */}
+            <div className={`absolute bottom-0 left-0 w-full h-4 transition-colors duration-500 ${data.garden ? 'bg-emerald-500/40 shadow-[0_-10px_20px_rgba(16,185,129,0.3)]' : 'bg-slate-800'}`}></div>
+          </div>
+        </div>
+      );
+    }
+
+    // 2. Akıllı Sera Görselleştirici
     function GreenhouseVisualizer({ left, right }) {
       const ZoneVisual = ({ title, data }) => {
-        // Tam hedefe göre durum analizleri
         const isHot = data.temp > data.targetTemp;
         const isCold = data.temp < data.targetTemp;
         const isDry = data.soil < data.targetSoil;
         const isHumid = data.hum > data.targetHum;
 
-        // Arka plan rengi ve ışık yansıması
         let airBg = "bg-emerald-500/5 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]";
         if (isHot) airBg = "bg-red-500/20 shadow-[inset_0_0_30px_rgba(239,68,68,0.2)]";
         else if (isCold) airBg = "bg-sky-500/15 shadow-[inset_0_0_30px_rgba(56,189,248,0.2)]";
 
         let soilBg = "bg-emerald-900/30";
         if (isDry) soilBg = "bg-amber-900/50";
-        else if (data.pump) soilBg = "bg-blue-900/50"; // Sulanırken toprak mavi parlar
+        else if (data.pump) soilBg = "bg-blue-900/50"; 
 
         return (
           <div className="flex-1 relative flex flex-col h-full rounded-[18px] overflow-hidden border border-white/10 transition-all duration-700">
-            
-            {/* Üst Kısım: Hava (Sıcaklık ve Nem) */}
             <div className={`flex-1 flex flex-col items-center justify-center relative transition-colors duration-700 ${airBg}`}>
               <div className="absolute top-2 left-2 text-[9px] font-black text-white/50">{title}</div>
-              
-              {/* Dinamik Işıklar / LED Panel */}
               <div className="absolute top-2 right-2 flex gap-1">
-                {/* Sıcaklık LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${isHot ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isCold ? 'bg-sky-500 shadow-[0_0_8px_#0ea5e9]' : 'bg-slate-700'}`}></div>
-                {/* Toprak Kuru LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${isDry ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-slate-700'}`}></div>
-                {/* Pompa LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${data.pump ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-slate-700'}`}></div>
-                {/* Fan LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${data.fan ? 'bg-cyan-500 shadow-[0_0_8px_#06b6d4]' : 'bg-slate-700'}`}></div>
               </div>
-
-              {/* Merkez İkon */}
               <div className={`text-4xl opacity-90 transition-transform duration-500 ${data.fan ? 'animate-spin text-cyan-400' : ''}`}>
                 {data.fan ? '🌀' : isHot ? '🔥' : isCold ? '☀️' : '✅'}
               </div>
@@ -165,19 +216,10 @@
                 {data.fan ? 'Soğutuluyor' : isHot ? 'Sıcak' : isCold ? 'Doğal Isınma' : 'İdeal Isı'}
               </div>
             </div>
-
-            {/* Alt Kısım: Toprak (Nem) */}
             <div className={`h-1/3 relative flex flex-col items-center justify-center border-t border-white/10 transition-colors duration-700 ${soilBg}`}>
-              {/* Sulama Damlası Animasyonu */}
-              <div className={`absolute -top-4 text-xl transition-all duration-300 ${data.pump ? 'text-blue-400 animate-bounce opacity-100' : 'opacity-0'}`}>
-                💧
-              </div>
-              <div className="text-2xl opacity-90 transition-all">
-                {isDry ? '🏜️' : data.pump ? '🌧️' : '🪴'}
-              </div>
-              <div className="text-[8px] font-bold mt-1 opacity-70 tracking-widest uppercase">
-                {isDry ? 'Toprak Kuru' : data.pump ? 'Sulanıyor' : 'Toprak Nemli'}
-              </div>
+              <div className={`absolute -top-4 text-xl transition-all duration-300 ${data.pump ? 'text-blue-400 animate-bounce opacity-100' : 'opacity-0'}`}>💧</div>
+              <div className="text-2xl opacity-90 transition-all">{isDry ? '🏜️' : data.pump ? '🌧️' : '🪴'}</div>
+              <div className="text-[8px] font-bold mt-1 opacity-70 tracking-widest uppercase">{isDry ? 'Toprak Kuru' : data.pump ? 'Sulanıyor' : 'Toprak Nemli'}</div>
             </div>
           </div>
         );
@@ -188,20 +230,13 @@
           <div className="text-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
             <span>👁️</span> Canlı Sera Görünümü
           </div>
-          
           <div className="w-full aspect-square bg-slate-900/90 rounded-[32px] border-4 border-slate-800 p-2 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden">
-             
-             {/* Sera Çatısı (Güneşlik) */}
              <div className="h-[15%] w-full relative overflow-hidden flex items-end justify-center pb-2">
                <div className="absolute inset-x-4 top-2 bottom-0 bg-gradient-to-t from-white/5 to-transparent rounded-t-[100px] border border-b-0 border-white/10"></div>
-               {/* Merkez Güneş Lambası */}
                <div className="w-16 h-1 bg-yellow-500/40 rounded-full shadow-[0_0_20px_rgba(234,179,8,0.6)] z-10"></div>
              </div>
-             
-             {/* İç Bölüm (Sol ve Sağ Bölgeler) */}
              <div className="flex-1 flex gap-2 pt-2 pb-1 px-1 relative">
                <ZoneVisual title="SOL BÖLGE" data={left} />
-               {/* Bölgeleri ayıran orta direk */}
                <div className="absolute top-2 bottom-1 left-1/2 -translate-x-1/2 w-1.5 bg-slate-800 rounded-full border border-white/5 z-10 shadow-lg"></div>
                <ZoneVisual title="SAĞ BÖLGE" data={right} />
              </div>
@@ -210,11 +245,60 @@
       );
     }
 
-    // --- ANA BÖLGE (ZONE) KARTI ---
+    // 3. Akıllı Otopark Görselleştirici
+    function ParkingVisualizer({ data }) {
+      return (
+        <div className="mb-8 w-full max-w-[380px] mx-auto animate-[fadeIn_0.5s_ease-out]">
+          <div className="text-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
+            <span>👁️</span> Dijital Otopark İkizi
+          </div>
+          <div className="w-full aspect-video bg-slate-800 rounded-[32px] border-4 border-slate-700 p-3 shadow-[0_0_40px_rgba(0,0,0,0.4)] flex flex-col relative overflow-hidden">
+             {/* Bariyer */}
+             <div className="absolute left-0 bottom-4 w-full h-8 flex items-center px-4">
+                <div className="w-6 h-6 bg-slate-900 rounded border border-white/10 z-20"></div>
+                <div className={`h-2 flex-1 origin-left transition-transform duration-1000 z-10 ${data.gateOpen ? '-rotate-90 bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'rotate-0 bg-red-500 shadow-[0_0_10px_#ef4444]'}`}>
+                    {/* Çizgiler */}
+                    <div className="w-full h-full" style={{backgroundImage: 'repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255,255,255,0.5) 10px, rgba(255,255,255,0.5) 20px)'}}></div>
+                </div>
+             </div>
+
+             {/* Asfalt ve Slotlar */}
+             <div className="flex-1 bg-slate-900 rounded-[18px] flex border-2 border-slate-700 relative overflow-hidden mb-8">
+                {/* Orta Yol Çizgisi */}
+                <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-1 border-l-2 border-dashed border-white/20"></div>
+                
+                {/* Sol Slotlar (P1, P2) */}
+                <div className="flex-1 flex flex-col">
+                  {[0, 1].map(i => (
+                    <div key={i} className="flex-1 border-b-2 border-dashed border-white/20 flex items-center justify-center relative">
+                      <div className="absolute top-1 left-2 text-[8px] font-bold text-slate-500">P{i+1}</div>
+                      <div className={`text-4xl transition-all duration-500 ${data.slots[i] ? 'scale-100 rotate-90' : 'scale-0 opacity-0'}`}>🏎️</div>
+                      {!data.slots[i] && <div className="text-xl font-black text-emerald-500/20">P</div>}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Sağ Slotlar (P3, P4) */}
+                <div className="flex-1 flex flex-col">
+                  {[2, 3].map(i => (
+                    <div key={i} className="flex-1 border-b-2 border-dashed border-white/20 flex items-center justify-center relative">
+                      <div className="absolute top-1 right-2 text-[8px] font-bold text-slate-500">P{i+1}</div>
+                      <div className={`text-4xl transition-all duration-500 ${data.slots[i] ? 'scale-100 -rotate-90' : 'scale-0 opacity-0'}`}>🚙</div>
+                      {!data.slots[i] && <div className="text-xl font-black text-emerald-500/20">P</div>}
+                    </div>
+                  ))}
+                </div>
+             </div>
+          </div>
+        </div>
+      );
+    }
+
+
+    // --- ANA BÖLGE (ZONE) KARTI (SERA İÇİN) ---
     function ZoneCard({ zoneKey, title, data, onUpdate, autoMode, waterLow }) {
       const { temp, hum, soil, targetTemp, targetHum, targetSoil, pump, fan } = data;
 
-      // Tam hedefe ulaşıp ulaşmadığına bakar (Tolerans YOK)
       const isTempHigh = temp > targetTemp;
       const isTempLow = temp < targetTemp;
       const isHumHigh = hum > targetHum;
@@ -310,6 +394,7 @@
 
       // Home (Ev Kontrol) State
       const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
+      const [homeSim, setHomeSim] = useState({ power: 120, temp: 23.5 }); // Simüle edilen anlık veriler
       
       // Sera State
       const defaultZone = { temp: 24, hum: 45, soil: 60, pump: false, fan: false, targetTemp: 26, targetHum: 50, targetSoil: 60 };
@@ -321,7 +406,7 @@
       });
 
       // Otopark State
-      const [parkData, setParkData] = useState({ occupied: 0, slots: [false, false, false, false] });
+      const [parkData, setParkData] = useState({ occupied: 0, slots: [false, false, false, false], gateOpen: false });
 
       const seraRef = useRef(sera);
       useEffect(() => { seraRef.current = sera; }, [sera]);
@@ -400,17 +485,20 @@
               const d = snap.data();
               let occupied = 0;
               let slots = [false, false, false, false];
+              let gateOpen = false;
 
               if (d.occupied !== undefined) {
                 occupied = d.occupied;
                 slots = d.slots || slots;
+                gateOpen = d.gateOpen || false;
               } else if (d.fields) {
                 occupied = d.fields.occupied?.integerValue ? Number(d.fields.occupied.integerValue) : 0;
+                gateOpen = d.fields.gateOpen?.booleanValue || false;
                 if (d.fields.slots?.arrayValue?.values) {
                   slots = d.fields.slots.arrayValue.values.map(v => v.booleanValue === true);
                 }
               }
-              setParkData({ occupied, slots });
+              setParkData({ occupied, slots, gateOpen });
             }
           }
         );
@@ -431,6 +519,36 @@
         await window.FB.setDoc(ref, { [field]: !homeData[field] }, { merge: true }).catch(console.error);
       };
 
+      const togglePark = async (field, value) => {
+        if (!user) return;
+        const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "parking", "status");
+        await window.FB.setDoc(ref, { [field]: value }, { merge: true }).catch(console.error);
+      };
+
+      // EV SİMÜLASYONU (Güç ve Sıcaklık Tüketimi)
+      useEffect(() => {
+        if (projectMode !== "home") return;
+        const interval = setInterval(() => {
+           let power = 50; // Temel tüketim
+           if(homeData.light) power += 40;
+           if(homeData.kitchen) power += 60;
+           if(homeData.plug) power += 150;
+           if(homeData.ac) power += 1200;
+           if(homeData.garden) power += 80;
+           
+           // Dalgalanma
+           power += Math.floor(Math.random() * 20);
+
+           setHomeSim(prev => {
+             let temp = prev.temp;
+             if (homeData.ac) temp = Math.max(18, temp - 0.5);
+             else if (temp < 25) temp += 0.2;
+             return { power, temp: Math.round(temp * 10) / 10 };
+           });
+        }, 2000);
+        return () => clearInterval(interval);
+      }, [projectMode, homeData]);
+
       // SERA SİMÜLASYONU (Tam Hedef Odaklı & Atlamasız)
       useEffect(() => {
         if (!user || projectMode !== "greenhouse") return;
@@ -449,7 +567,6 @@
             let { temp: t, hum: h, soil: s, pump, fan, targetTemp, targetHum, targetSoil } = z;
 
             if (current.auto) {
-              // Otonom Kararlar (Tam hedefe göre)
               if (t > targetTemp || h > targetHum) fan = true;
               else if (t <= targetTemp && h <= targetHum) fan = false;
 
@@ -459,9 +576,8 @@
 
             if (waterLow && pump) pump = false;
 
-            // Sensör Simülasyonu
             if (pump) {
-              s += 2; // Daha yavaş artış (Hedefi atlamamak için)
+              s += 2; 
               h += 1; 
               if (newWaterLevel > 0) newWaterLevel -= 0.5; 
             } else if (s > 20 && Math.random() > 0.5) {
@@ -476,8 +592,6 @@
               if (h > 30 && Math.random() > 0.7) h -= 0.5; 
             }
 
-            // Otonom Modda Hedefe Kilitlenme (Mükemmel Durma)
-            // Simülasyonda 25.5 gibi virgüllü durmak yerine tam hedefe yapıştırır.
             if (current.auto) {
                if (Math.abs(t - targetTemp) <= 1 && !fan) t = targetTemp;
                if (Math.abs(h - targetHum) <= 2 && !fan && !pump) h = targetHum;
@@ -488,7 +602,6 @@
             h = Math.max(10, Math.min(h, 95));
             s = Math.max(0, Math.min(s, 100));
 
-            // Yuvarlama
             t = Math.round(t * 10) / 10;
             h = Math.round(h * 10) / 10;
             s = Math.round(s * 10) / 10;
@@ -548,8 +661,12 @@
                 </h1>
               </div>
               <input type="password" maxLength="4" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && login()} placeholder="PROJE PIN KODU" className="w-full rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-center text-xl tracking-[0.2em] text-slate-900 outline-none focus:border-blue-500 mb-4 font-bold" />
-              <button onClick={login} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-4 font-bold uppercase tracking-wider btn-touch">Giriş Yap</button>
+              <button onClick={login} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-4 font-bold uppercase tracking-wider btn-touch shadow-lg shadow-blue-600/20">Giriş Yap</button>
               {errorMsg && <div className="mt-4 p-3 rounded-lg bg-red-50 text-red-500 text-center text-sm font-medium">{errorMsg}</div>}
+              
+              <div className="mt-6 text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest">
+                Şifreler: Ev(0000) • Sera(1111) • Park(2222)
+              </div>
             </div>
           </div>
         );
@@ -580,32 +697,45 @@
             <button onClick={() => { setLoggedIn(false); setPin(""); setProjectMode(null); }} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-bold btn-touch hover:bg-white/10">ÇIKIŞ</button>
           </header>
 
-          {/* EKRAN GENİŞLİĞİNİ YAN YANA GÖREBİLMEK İÇİN max-w-5xl YAPTIK */}
           <main className="max-w-5xl mx-auto px-4 py-6">
 
-            {/* AKILLI EV PROJESİ */}
+            {/* 🏠 AKILLI EV PROJESİ */}
             {projectMode === "home" && (
-              <div className="max-w-md mx-auto space-y-4 animate-[fadeIn_0.3s_ease-out]">
-                <div className="mb-6">
-                  <h2 className="text-2xl font-black">Ev Kontrolü</h2>
-                  <p className="text-slate-400 text-sm">Aydınlatma ve cihazları yönetin.</p>
+              <div className="max-w-3xl mx-auto animate-[fadeIn_0.3s_ease-out]">
+                
+                {/* Ev Dijital İkiz */}
+                <HomeVisualizer data={homeData} />
+
+                {/* Ev Metrikleri */}
+                <div className="grid grid-cols-2 gap-4 mb-6">
+                  <MetricCard title="Evin Sıcaklığı" value={homeSim.temp} unit="°C" emoji="🌡️" isDanger={false} isWarning={false} />
+                  <MetricCard title="Anlık Güç Tüketimi" value={homeSim.power} unit="W" emoji="⚡" isDanger={homeSim.power > 1000} isWarning={homeSim.power > 500} />
                 </div>
-                <Toggle title="Salon Işığı" emoji="💡" active={homeData.light} onClick={() => toggleHome("light")} activeColor="bg-amber-500" />
-                <Toggle title="Mutfak Işığı" emoji="🍽️" active={homeData.kitchen} onClick={() => toggleHome("kitchen")} activeColor="bg-blue-500" />
-                <Toggle title="Akıllı Priz" emoji="🔌" active={homeData.plug} onClick={() => toggleHome("plug")} activeColor="bg-emerald-500" />
-                <Toggle title="Klima (AC)" emoji="❄️" active={homeData.ac} onClick={() => toggleHome("ac")} activeColor="bg-cyan-500" />
-                <Toggle title="Bahçe Aydınlatma" emoji="🌞" active={homeData.garden} onClick={() => toggleHome("garden")} activeColor="bg-purple-500" />
+
+                <div className="glass-panel p-5 rounded-[24px] border border-white/10 shadow-xl">
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2">
+                    <span>📱</span> Ev Aletleri Kontrol Merkezi
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    <ModernWidget title="Salon Işığı" subtitle="Ana Aydınlatma" icon="💡" active={homeData.light} onClick={() => toggleHome("light")} colorClass="bg-amber-500/20 border-amber-500/50 text-amber-200" />
+                    <ModernWidget title="Mutfak Işığı" subtitle="Tezgah Altı" icon="🍽️" active={homeData.kitchen} onClick={() => toggleHome("kitchen")} colorClass="bg-blue-500/20 border-blue-500/50 text-blue-200" />
+                    <ModernWidget title="Akıllı Priz" subtitle="TV & Konsol" icon="🔌" active={homeData.plug} onClick={() => toggleHome("plug")} colorClass="bg-emerald-500/20 border-emerald-500/50 text-emerald-200" />
+                    <ModernWidget title="Klima (AC)" subtitle="İklimlendirme" icon="❄️" active={homeData.ac} onClick={() => toggleHome("ac")} colorClass="bg-cyan-500/20 border-cyan-500/50 text-cyan-200" />
+                    <ModernWidget title="Bahçe Aydınlatma" subtitle="Dış Mekan" icon="🌞" active={homeData.garden} onClick={() => toggleHome("garden")} colorClass="bg-purple-500/20 border-purple-500/50 text-purple-200" />
+                  </div>
+                </div>
               </div>
             )}
 
-            {/* AKILLI SERA PROJESİ */}
+            {/* 🌱 AKILLI SERA PROJESİ */}
             {projectMode === "greenhouse" && (
               <div className="animate-[fadeIn_0.3s_ease-out]">
                 
                 {/* GÖRSEL SERA DİJİTAL İKİZ */}
                 <GreenhouseVisualizer left={sera.left} right={sera.right} />
 
-                {/* GLOBAL UYARILAR & AYARLAR (Merkezlenmiş) */}
+                {/* GLOBAL UYARILAR & AYARLAR */}
                 <div className="max-w-md mx-auto mb-6 space-y-3">
                   <div className={`glass-panel rounded-2xl p-4 flex flex-col gap-2 ${waterLow ? 'danger-pulse' : 'border border-white/5'}`}>
                     <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
@@ -637,46 +767,52 @@
                   </button>
                 </div>
 
-                {/* BÖLGELER (YANYANA / GRID MİMARİSİ) */}
+                {/* BÖLGELER (YANYANA) */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
-                  <ZoneCard 
-                     zoneKey="left" 
-                     title="Sol Bölge Detayları" 
-                     data={sera.left} 
-                     onUpdate={updateSeraFlat} 
-                     autoMode={sera.auto}
-                     waterLow={waterLow}
-                  />
-                  <ZoneCard 
-                     zoneKey="right" 
-                     title="Sağ Bölge Detayları" 
-                     data={sera.right} 
-                     onUpdate={updateSeraFlat} 
-                     autoMode={sera.auto}
-                     waterLow={waterLow}
-                  />
+                  <ZoneCard zoneKey="left" title="Sol Bölge Detayları" data={sera.left} onUpdate={updateSeraFlat} autoMode={sera.auto} waterLow={waterLow} />
+                  <ZoneCard zoneKey="right" title="Sağ Bölge Detayları" data={sera.right} onUpdate={updateSeraFlat} autoMode={sera.auto} waterLow={waterLow} />
                 </div>
               </div>
             )}
 
-            {/* AKILLI OTOPARK PROJESİ */}
+            {/* 🅿️ AKILLI OTOPARK PROJESİ */}
             {projectMode === "parking" && (
-              <div className="max-w-md mx-auto space-y-4 animate-[fadeIn_0.3s_ease-out]">
-                <div className="mb-6 flex justify-between items-end">
-                  <div>
-                    <h2 className="text-2xl font-black">Sensör Durumu</h2>
-                    <p className="text-slate-400 text-sm">Canlı doluluk durumu.</p>
-                  </div>
+              <div className="max-w-md mx-auto animate-[fadeIn_0.3s_ease-out]">
+                
+                {/* Otopark Dijital İkiz */}
+                <ParkingVisualizer data={parkData} />
+
+                {/* Bariyer Kontrolü */}
+                <div className="mb-6">
+                  <button
+                    onClick={() => togglePark("gateOpen", !parkData.gateOpen)}
+                    className={`w-full rounded-2xl p-4 flex items-center justify-between border btn-touch transition-all shadow-lg ${
+                      parkData.gateOpen ? "bg-emerald-500/20 border-emerald-500/50" : "bg-red-500/20 border-red-500/50"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl">🚧</div>
+                      <div className="text-left">
+                        <div className={`text-sm font-black uppercase tracking-wider ${parkData.gateOpen ? 'text-emerald-400' : 'text-red-400'}`}>Giriş Bariyeri</div>
+                        <div className="text-[10px] text-white/70">{parkData.gateOpen ? "Bariyer Açık - Geçiş Serbest" : "Bariyer Kapalı - Beklemede"}</div>
+                      </div>
+                    </div>
+                    <div className={`w-12 h-6 rounded-full p-1 transition-all ${parkData.gateOpen ? "bg-emerald-400/30" : "bg-red-900/50"}`}>
+                      <div className={`w-4 h-4 bg-white rounded-full transition-all ${parkData.gateOpen ? "translate-x-6" : "translate-x-0"}`}></div>
+                    </div>
+                  </button>
                 </div>
 
-                <div className="glass-panel rounded-3xl p-6 text-center mb-8 border border-white/5">
-                  <div className="text-6xl mb-4 font-black">
-                    <span className="text-blue-400">{4 - parkData.occupied}</span>
-                    <span className="text-slate-500 text-3xl mx-2">/</span>
-                    <span className="text-slate-500 text-4xl">4</span>
+                <div className="glass-panel rounded-[24px] p-6 text-center mb-6 border border-white/5 shadow-xl relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 to-cyan-500"></div>
+                  <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Anlık Kapasite Durumu</h3>
+                  <div className="text-6xl mb-2 font-black flex items-center justify-center gap-2">
+                    <span className={parkData.occupied >= 4 ? "text-red-400" : "text-cyan-400"}>{4 - parkData.occupied}</span>
+                    <span className="text-slate-600 text-4xl">/</span>
+                    <span className="text-slate-500 text-5xl">4</span>
                   </div>
-                  <div className="text-sm font-bold uppercase tracking-widest text-slate-400">
-                    Boş Park Yeri
+                  <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400">
+                    Müsait Park Yeri
                   </div>
                 </div>
 
@@ -684,14 +820,14 @@
                   {[0, 1, 2, 3].map((index) => {
                     const isFull = parkData.slots[index];
                     return (
-                      <div key={index} className={`relative rounded-2xl p-6 border-2 flex flex-col items-center justify-center gap-3 transition-colors ${
-                        isFull ? "bg-red-500/10 border-red-500/30" : "bg-emerald-500/10 border-emerald-500/30"
+                      <div key={index} className={`relative rounded-2xl p-6 border flex flex-col items-center justify-center gap-3 transition-colors shadow-lg ${
+                        isFull ? "bg-slate-800 border-red-500/30" : "bg-slate-800/50 border-emerald-500/30"
                       }`}>
-                        <div className="absolute top-3 left-3 text-xs font-bold text-slate-500">P{index + 1}</div>
-                        <div className={`text-5xl transition-transform ${isFull ? 'scale-100' : 'scale-75 opacity-50 grayscale'}`}>
+                        <div className="absolute top-3 left-3 text-xs font-black text-slate-500 opacity-50">P{index + 1}</div>
+                        <div className={`text-5xl transition-transform duration-500 ${isFull ? 'scale-100' : 'scale-75 opacity-20 grayscale'}`}>
                           {isFull ? "🚗" : "🅿️"}
                         </div>
-                        <div className={`text-sm font-bold tracking-widest uppercase ${isFull ? 'text-red-400' : 'text-emerald-400'}`}>
+                        <div className={`text-[10px] font-bold tracking-widest uppercase px-3 py-1 rounded-full ${isFull ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/20 text-emerald-400'}`}>
                           {isFull ? "Dolu" : "Boş"}
                         </div>
                       </div>

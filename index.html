@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>ENKA Kontrol Paneli</title>
+  <title>Mucit Akademisi | IoT Kontrol</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -157,14 +157,15 @@
       const [loggedIn, setLoggedIn] = useState(false);
       const [loading, setLoading] = useState(false);
       const [errorMsg, setErrorMsg] = useState("");
-      const [activeTab, setActiveTab] = useState("home"); // home, greenhouse, parking
+      
+      // Hangi projenin aktif olduğunu tutan state (home, greenhouse, parking)
+      const [projectMode, setProjectMode] = useState(null);
 
       // Sistem Durumları
       const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
       const [seraData, setSeraData] = useState({ temp: 0, hum: 0, auto: false, pump: false, motorSpeed: 0 });
       const [parkData, setParkData] = useState({ occupied: 0, slots: [false, false, false, false] });
 
-      // Motor hızı için lokal state (Sürükleme sırasında UI gecikmemesi için)
       const [localMotorSpeed, setLocalMotorSpeed] = useState(0);
 
       useEffect(() => {
@@ -195,31 +196,23 @@
         return () => unsub && unsub();
       }, [ready]);
 
-      // Firebase Veri Dinleyicileri (Realtime Sync)
+      // Firebase Veri Dinleyicileri
       useEffect(() => {
         if (!user) return;
 
         const db = window.FB.db;
         const appId = window.APP_ID;
         
-        // Akıllı Ev Dinleyici
         const unsubHome = window.FB.onSnapshot(
           window.FB.doc(db, "artifacts", appId, "public", "data", "home", "status"),
-          (snap) => {
-            if (snap.exists()) setHomeData(prev => ({ ...prev, ...snap.data() }));
-          },
-          (err) => setErrorMsg("Ev verisi alınamadı.")
+          (snap) => { if (snap.exists()) setHomeData(prev => ({ ...prev, ...snap.data() })); }
         );
 
-        // Sera Dinleyici
         const unsubSera = window.FB.onSnapshot(
           window.FB.doc(db, "artifacts", appId, "public", "data", "greenhouse", "status"),
           (snap) => {
             if (snap.exists()) {
               const d = snap.data();
-              
-              // ESP32 REST API ile yazıyorsa { fields: { temp: { integerValue: 25 } } } şeklinde gelebilir.
-              // Normal Firebase istemcisi kullanılıyorsa doğrudan d.temp gelir. Her iki duruma karşı önlem:
               const getVal = (key, fallback) => {
                 if (d[key] !== undefined) return d[key];
                 if (d.fields && d.fields[key]) {
@@ -237,20 +230,16 @@
                 pump: getVal("pump", false),
                 motorSpeed: newSpeed
               });
-              setLocalMotorSpeed(newSpeed); // Dışarıdan gelen veriyi locale eşitle
+              setLocalMotorSpeed(newSpeed);
             }
-          },
-          (err) => setErrorMsg("Sera verisi alınamadı.")
+          }
         );
 
-        // Otopark Dinleyici
         const unsubPark = window.FB.onSnapshot(
           window.FB.doc(db, "artifacts", appId, "public", "data", "parking", "status"),
           (snap) => {
             if (snap.exists()) {
               const d = snap.data();
-              
-              // Yine ESP32 REST format ihtimaline karşı:
               let occupied = 0;
               let slots = [false, false, false, false];
 
@@ -263,56 +252,53 @@
                   slots = d.fields.slots.arrayValue.values.map(v => v.booleanValue === true);
                 }
               }
-
               setParkData({ occupied, slots });
             }
-          },
-          (err) => setErrorMsg("Otopark verisi alınamadı.")
+          }
         );
 
-        return () => {
-          unsubHome();
-          unsubSera();
-          unsubPark();
-        };
+        return () => { unsubHome(); unsubSera(); unsubPark(); };
       }, [user]);
 
+      // PIN KONTROL SİSTEMİ
       function login() {
         if (pin === "0000") {
+          setProjectMode("home");
+          setLoggedIn(true);
+          setErrorMsg("");
+        } else if (pin === "1111") {
+          setProjectMode("greenhouse");
+          setLoggedIn(true);
+          setErrorMsg("");
+        } else if (pin === "2222") {
+          setProjectMode("parking");
           setLoggedIn(true);
           setErrorMsg("");
         } else {
-          setErrorMsg("Hatalı PIN. Doğru PIN: 0000");
+          setErrorMsg("Hatalı Yetki Kodu!");
         }
       }
 
-      // Ev kontrol komutu
       async function toggleHome(field) {
         if (!user) return;
         setLoading(true);
         try {
           const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "home", "status");
           await window.FB.setDoc(ref, { [field]: !homeData[field] }, { merge: true });
-        } catch (e) {
-          setErrorMsg("Komut iletilemedi.");
-        }
+        } catch (e) { setErrorMsg("Komut iletilemedi."); }
         setLoading(false);
       }
 
-      // Sera kontrol komutu
       async function updateSera(field, value) {
         if (!user) return;
         setLoading(true);
         try {
           const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "greenhouse", "status");
           await window.FB.setDoc(ref, { [field]: value }, { merge: true });
-        } catch (e) {
-          setErrorMsg("Komut iletilemedi.");
-        }
+        } catch (e) { setErrorMsg("Komut iletilemedi."); }
         setLoading(false);
       }
 
-      // Yükleniyor Ekranı
       if (!ready) {
         return (
           <div className="min-h-screen flex flex-col items-center justify-center px-6">
@@ -324,23 +310,30 @@
         );
       }
 
-      // Giriş Ekranı (ENKA Tasarımı)
+      // GİRİŞ EKRANI (MUCİT AKADEMİSİ)
       if (!loggedIn) {
         return (
-          <div className="min-h-screen flex items-center justify-center px-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-            <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 left-0 w-full h-2 bg-[#172b4d]"></div>
+          <div className="min-h-screen flex items-center justify-center px-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50">
+            <div className="bg-white w-full max-w-sm rounded-3xl p-8 shadow-2xl relative overflow-hidden border border-slate-200">
+              <div className="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
               
-              <div className="text-center mb-8 mt-2">
-                <h1 className="text-center text-4xl font-black tracking-tighter text-[#172b4d] leading-[1.1]">
-                  ENKA<br/>OKULLARI
-                </h1>
-                <div className="flex items-center justify-center gap-3 mt-4">
-                  <div className="h-[1px] w-8 bg-[#008cc9]"></div>
-                  <p className="text-[#008cc9] text-[10px] font-bold italic tracking-wide uppercase">
-                    ENKAlı Olmak Ayrıcalıktır
-                  </p>
-                  <div className="h-[1px] w-8 bg-[#008cc9]"></div>
+              <div className="text-center mb-8 mt-4">
+                {/* LOGO: mucit_logo.png dosyasını projenin bulunduğu klasöre koyabilirsiniz */}
+                <img 
+                  src="mucit_logo.png" 
+                  alt="Mucit Akademisi" 
+                  className="mx-auto h-24 object-contain mb-2"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'block';
+                  }}
+                />
+                {/* LOGO BULUNAMAZSA GÖSTERİLECEK YAZI (Yedek) */}
+                <div style={{ display: 'none' }} className="mb-4">
+                  <div className="text-5xl mb-2">🎓</div>
+                  <h1 className="text-center text-4xl font-black tracking-tighter text-slate-900 leading-[1]">
+                    MUCİT<br/><span className="text-blue-600">AKADEMİSİ</span>
+                  </h1>
                 </div>
               </div>
 
@@ -350,15 +343,15 @@
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && login()}
-                placeholder="PIN Kodu"
-                className="w-full rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-center text-2xl tracking-[0.5em] text-[#172b4d] outline-none focus:border-[#008cc9] focus:ring-2 focus:ring-[#008cc9]/20 transition-all mb-4 font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-400"
+                placeholder="PROJE PIN KODU"
+                className="w-full rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-center text-xl tracking-[0.2em] text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all mb-4 font-bold placeholder:tracking-normal placeholder:font-normal placeholder:text-slate-400"
               />
 
               <button
                 onClick={login}
-                className="w-full rounded-xl bg-[#172b4d] hover:bg-[#0f1d35] text-white py-4 font-bold uppercase tracking-wider btn-touch shadow-lg shadow-[#172b4d]/20"
+                className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-4 font-bold uppercase tracking-wider btn-touch shadow-lg shadow-blue-600/20"
               >
-                Sisteme Bağlan
+                Giriş Yap
               </button>
 
               {errorMsg && (
@@ -371,25 +364,33 @@
         );
       }
 
+      // Dinamik Başlık ve İkon Seçimi
+      let projectTitle = "IoT KONTROL";
+      let projectIcon = "⚡";
+      
+      if (projectMode === "home") { projectTitle = "AKILLI EV"; projectIcon = "🏠"; }
+      else if (projectMode === "greenhouse") { projectTitle = "AKILLI SERA"; projectIcon = "🌱"; }
+      else if (projectMode === "parking") { projectTitle = "AKILLI OTOPARK"; projectIcon = "🅿️"; }
+
       return (
-        <div className="min-h-screen pb-24">
+        <div className="min-h-screen pb-12">
           {/* Header */}
           <header className="px-6 py-5 glass-panel sticky top-0 z-50 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#172b4d] flex items-center justify-center text-lg shadow-lg">
-                🏫
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-lg shadow-lg">
+                {projectIcon}
               </div>
               <div>
-                <div className="text-lg font-black tracking-tight leading-tight text-white">ENKA KONTROL</div>
+                <div className="text-lg font-black tracking-tight leading-tight text-white">{projectTitle}</div>
                 <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                   <span className={`w-2 h-2 rounded-full ${user ? 'bg-green-500' : 'bg-red-500'}`}></span>
-                  {user ? 'Çevrimiçi' : 'Bağlantı Koptu'}
+                  MUCİT AKADEMİSİ
                 </div>
               </div>
             </div>
 
             <button
-              onClick={() => { setLoggedIn(false); setPin(""); }}
+              onClick={() => { setLoggedIn(false); setPin(""); setProjectMode(null); }}
               className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-sm font-semibold btn-touch hover:bg-white/10"
             >
               Çıkış
@@ -398,7 +399,6 @@
 
           <main className="max-w-md mx-auto px-4 py-6">
             
-            {/* Hata Mesajı */}
             {errorMsg && (
               <div className="mb-6 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-red-200 text-sm text-center flex items-center justify-center gap-2">
                 <span>⚠️</span> {errorMsg}
@@ -406,8 +406,8 @@
               </div>
             )}
 
-            {/* SEKMELER: AKILLI EV */}
-            {activeTab === "home" && (
+            {/* AKILLI EV PROJESİ */}
+            {projectMode === "home" && (
               <div className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
                 <div className="mb-6">
                   <h2 className="text-2xl font-black">Ev Kontrolü</h2>
@@ -422,12 +422,12 @@
               </div>
             )}
 
-            {/* SEKMELER: AKILLI SERA */}
-            {activeTab === "greenhouse" && (
+            {/* AKILLI SERA PROJESİ */}
+            {projectMode === "greenhouse" && (
               <div className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
                 <div className="mb-6 flex justify-between items-end">
                   <div>
-                    <h2 className="text-2xl font-black">Akıllı Sera</h2>
+                    <h2 className="text-2xl font-black">Sera İzleme</h2>
                     <p className="text-slate-400 text-sm">İklim ve sulama sistemleri.</p>
                   </div>
                   {loading && <span className="loader border-green-500"></span>}
@@ -493,12 +493,12 @@
               </div>
             )}
 
-            {/* SEKMELER: AKILLI OTOPARK */}
-            {activeTab === "parking" && (
+            {/* AKILLI OTOPARK PROJESİ */}
+            {projectMode === "parking" && (
               <div className="space-y-4 animate-[fadeIn_0.3s_ease-out]">
                 <div className="mb-6 flex justify-between items-end">
                   <div>
-                    <h2 className="text-2xl font-black">Otopark</h2>
+                    <h2 className="text-2xl font-black">Sensör Durumu</h2>
                     <p className="text-slate-400 text-sm">Canlı doluluk durumu.</p>
                   </div>
                 </div>
@@ -543,38 +543,8 @@
             )}
 
           </main>
-
-          {/* Alt Navigasyon Barı */}
-          <nav className="fixed bottom-0 left-0 w-full glass-panel border-t border-white/10 pb-safe">
-            <div className="max-w-md mx-auto flex">
-              <button 
-                onClick={() => setActiveTab("home")}
-                className={`flex-1 py-4 flex flex-col items-center gap-1 btn-touch ${activeTab === "home" ? "text-blue-400" : "text-slate-500"}`}
-              >
-                <span className="text-2xl mb-1">🏠</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest">Ev</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab("greenhouse")}
-                className={`flex-1 py-4 flex flex-col items-center gap-1 btn-touch ${activeTab === "greenhouse" ? "text-green-400" : "text-slate-500"}`}
-              >
-                <span className="text-2xl mb-1">🌱</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest">Sera</span>
-              </button>
-              
-              <button 
-                onClick={() => setActiveTab("parking")}
-                className={`flex-1 py-4 flex flex-col items-center gap-1 btn-touch ${activeTab === "parking" ? "text-amber-400" : "text-slate-500"}`}
-              >
-                <span className="text-2xl mb-1">🅿️</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest">Otopark</span>
-              </button>
-            </div>
-          </nav>
           
           <style dangerouslySetInnerHTML={{__html: `
-            .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
             @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
           `}} />
         </div>
@@ -584,5 +554,5 @@
     const root = ReactDOM.createRoot(document.getElementById("root"));
     root.render(<App />);
   </script>
-</body>
+</body> 
 </html>

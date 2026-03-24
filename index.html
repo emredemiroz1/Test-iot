@@ -179,7 +179,6 @@
         const isHot = data.temp > data.targetTemp;
         const isCold = data.temp < data.targetTemp;
         const isDry = data.soil < data.targetSoil;
-        // const isHumid = data.hum > data.targetHum; // Removed unused variable to clean up, but keeping for logic reference
 
         let airBg = "bg-emerald-500/5 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]";
         if (isHot) airBg = "bg-red-500/20 shadow-[inset_0_0_30px_rgba(239,68,68,0.2)]";
@@ -404,6 +403,9 @@
       const seraRef = useRef(sera);
       useEffect(() => { seraRef.current = sera; }, [sera]);
 
+      // Su Doldurma Zamanlayıcısı için Referans
+      const refillTimerRef = useRef(null);
+
       useEffect(() => {
         const t = setInterval(() => {
           if (window.firebaseReady && window.FB) { setReady(true); clearInterval(t); }
@@ -541,7 +543,7 @@
         return () => clearInterval(interval);
       }, [projectMode, homeData]);
 
-      // SERA SİMÜLASYONU (GÜNCELLENDİ: Hedeften sapma ve düşük nem kontrolü iyileştirildi)
+      // SERA SİMÜLASYONU (Su Doldurma Eklendi)
       useEffect(() => {
         if (!user || projectMode !== "greenhouse") return;
         
@@ -549,9 +551,23 @@
           const current = seraRef.current;
           let changedData = {};
           const waterLow = current.waterLevel < 15;
-
           let newWaterLevel = current.waterLevel;
-          if (newWaterLevel > 0 && Math.random() > 0.8) newWaterLevel -= 1;
+
+          // --- SU DEPOSU OTOMATİK DOLUM SİMÜLASYONU ---
+          if (waterLow) {
+            if (!refillTimerRef.current) {
+              refillTimerRef.current = Date.now(); // Sayaç başladı
+            } else if (Date.now() - refillTimerRef.current >= 10000) {
+              // 10 saniye doldu, depoyu fulle
+              newWaterLevel = 100;
+              refillTimerRef.current = null;
+            }
+          } else {
+            refillTimerRef.current = null;
+          }
+
+          // Doğal buharlaşma (Su azalmıyorsa ve dolumda değilse)
+          if (newWaterLevel > 0 && Math.random() > 0.8 && !waterLow) newWaterLevel -= 1;
           if (newWaterLevel !== current.waterLevel) changedData.waterLevel = newWaterLevel;
 
           ['left', 'right'].forEach(zKey => {
@@ -739,7 +755,7 @@
                     <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-white/5">
                       <div className={`h-full transition-all duration-1000 ${waterLow ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${sera.waterLevel}%` }}></div>
                     </div>
-                    {waterLow && <div className="text-[10px] text-red-400 font-bold mt-1 text-center bg-red-500/10 p-2 rounded-lg">⚠️ KRİTİK SEVİYE! SİSTEM POMPALARI GÜVENLİK İÇİN DURDURDU.</div>}
+                    {waterLow && <div className="text-[10px] text-red-400 font-bold mt-1 text-center bg-red-500/10 p-2 rounded-lg">⚠️ KRİTİK SEVİYE! POMPALAR DURDURULDU. (10 Sn İçinde Otomatik Dolum)</div>}
                   </div>
 
                   <button

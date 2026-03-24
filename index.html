@@ -112,7 +112,6 @@
 
     // --- BİLEŞENLER ---
 
-    // Toggle (Aç/Kapat) Butonu
     function Toggle({ title, emoji, active, onClick, activeColor, disabled }) {
       return (
         <button
@@ -135,7 +134,6 @@
       );
     }
 
-    // Sensör Veri Kartı
     function SensorCard({ title, value, unit, emoji, colorClass }) {
       return (
         <div className={`glass-panel rounded-2xl p-5 flex flex-col items-center justify-center gap-2 ${colorClass}`}>
@@ -158,21 +156,18 @@
       const [loading, setLoading] = useState(false);
       const [errorMsg, setErrorMsg] = useState("");
       
-      // Hangi projenin aktif olduğunu tutan state
       const [projectMode, setProjectMode] = useState(null);
 
-      // Sistem Durumları (Sera için Hedef değerler eklendi)
       const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
       const [seraData, setSeraData] = useState({ 
         temp: 24, hum: 45, 
         auto: false, pump: false, motorSpeed: 0,
-        targetTemp: 26, targetHum: 50 // Varsayılan hedefler
+        targetTemp: 26, targetHum: 50
       });
       const [parkData, setParkData] = useState({ occupied: 0, slots: [false, false, false, false] });
 
       const [localMotorSpeed, setLocalMotorSpeed] = useState(0);
 
-      // Sera verisini referans olarak tutuyoruz (simülasyon döngüsü için)
       const seraDataRef = useRef(seraData);
       useEffect(() => {
         seraDataRef.current = seraData;
@@ -206,7 +201,6 @@
         return () => unsub && unsub();
       }, [ready]);
 
-      // Firebase Veri Dinleyicileri
       useEffect(() => {
         if (!user) return;
 
@@ -232,14 +226,12 @@
                 return fallback;
               };
 
-              // Sensörden bozuk/devasa veri gelirse filtrele
               let safeTemp = getVal("temp", 24);
               if (safeTemp > 100 || safeTemp < -20) safeTemp = 24; 
               
               let safeHum = getVal("hum", 45);
               if (safeHum > 100 || safeHum < 0) safeHum = 45;
 
-              // Hedef değerleri Firebase'den çek
               let safeTargetTemp = getVal("targetTemp", 26);
               let safeTargetHum = getVal("targetHum", 50);
 
@@ -284,7 +276,7 @@
         return () => { unsubHome(); unsubSera(); unsubPark(); };
       }, [user]);
 
-      // SERA SİMÜLASYON MOTORU
+      // SERA SİMÜLASYON MOTORU (GÜNCELLENDİ: FAN NEMİ DE DÜŞÜRÜYOR)
       useEffect(() => {
         if (!user || projectMode !== "greenhouse") return;
         
@@ -298,19 +290,34 @@
           if (h > 100 || h < 0) { h = 45; changed = true; }
 
           if (current.auto) {
-            // OTONOM MOD: Kullanıcının belirlediği HEDEF değerlere (targetTemp, targetHum) ulaşmaya çalışır.
-            if (t > current.targetTemp) { t -= 1; changed = true; } // Hedefin üstündeyse soğut
-            else if (t < current.targetTemp - 2 && Math.random() > 0.6) { t += 1; changed = true; } // Doğal ısınma
+            // OTONOM MOD
+            // Sıcaklık Kontrolü
+            if (t > current.targetTemp) { t -= 1; changed = true; } 
+            else if (t < current.targetTemp && Math.random() > 0.5) { t += 1; changed = true; } 
             
-            if (h < current.targetHum) { h += 2; changed = true; } // Hedefin altındaysa nemlendir
-            else if (h > current.targetHum + 3 && Math.random() > 0.6) { h -= 1; changed = true; } // Doğal kuruma
+            // Nem Kontrolü
+            if (h < current.targetHum) { 
+              h += 2; changed = true; // Pompa çalışıyor, nem artıyor
+            } 
+            else if (h > current.targetHum) { 
+              h -= 2; changed = true; // Nem çok yüksek! Fan çalışarak nemi tahliye ediyor
+            }
           } else {
             // MANUEL MOD
-            if (current.pump) { h += 3; changed = true; } 
-            else if (h > 35 && Math.random() > 0.6) { h -= 1; changed = true; } 
+            if (current.pump) { 
+              h += 3; changed = true; // Pompa açıksa nem hızla artar
+            } else if (!current.pump && h > 35 && current.motorSpeed === 0 && Math.random() > 0.6) { 
+              h -= 1; changed = true; // Pompa ve fan kapalıysa yavaşça doğal kuruma
+            } 
 
-            if (current.motorSpeed > 0) { t -= 1; changed = true; } 
-            else if (t < 32 && Math.random() > 0.6) { t += 1; changed = true; } 
+            if (current.motorSpeed > 0) { 
+              t -= 1; // Fan sıcaklığı düşürür
+              if (!current.pump) h -= 2; // Fan aynı zamanda nemi de tahliye eder (eğer pompa kapalıysa)
+              changed = true; 
+            } 
+            else if (t < 32 && Math.random() > 0.6) { 
+              t += 1; changed = true; // Fan kapalıysa doğal ısınma
+            } 
           }
 
           t = Math.max(15, Math.min(t, 50));
@@ -326,7 +333,6 @@
       }, [user, projectMode]);
 
 
-      // PIN KONTROL SİSTEMİ
       function login() {
         if (pin === "0000") {
           setProjectMode("home");
@@ -376,7 +382,6 @@
         );
       }
 
-      // GİRİŞ EKRANI (MUCİT AKADEMİSİ)
       if (!loggedIn) {
         return (
           <div className="min-h-screen flex items-center justify-center px-6 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] bg-slate-50">
@@ -432,7 +437,6 @@
 
       return (
         <div className="min-h-screen pb-12">
-          {/* Header */}
           <header className="px-6 py-5 glass-panel sticky top-0 z-50 flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-lg shadow-lg">
@@ -491,17 +495,33 @@
                   {loading && <span className="loader border-green-500"></span>}
                 </div>
 
-                {/* ANLIK DURUM BİLDİRİM PANELİ (Dinamik Hedeflere Göre) */}
+                {/* GÜNCELLENEN OTONOM MOD BİLGİ PANELİ (Fanın Nemi Düşürme Mantığı Eklendi) */}
                 <div className="mb-4">
                   {seraData.auto ? (
                     <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm transition-all">
-                      <div className="font-bold flex items-center gap-2 mb-2 text-indigo-200">
+                      <div className="font-bold flex items-center gap-2 mb-3 text-indigo-200 border-b border-indigo-500/20 pb-2">
                         <span className="text-xl">🤖</span> Otonom Mod Aktif (Yapay Zeka)
                       </div>
                       
-                      {seraData.temp > seraData.targetTemp && <div className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Sıcaklık hedefin ({seraData.targetTemp}°C) üzerinde! Soğutuluyor.</div>}
-                      {seraData.hum < seraData.targetHum && <div className="text-blue-400 flex items-center gap-2 mt-1"><span className="animate-bounce">💧</span> Nem hedefin ({seraData.targetHum}%) altında! Sulama yapılıyor.</div>}
-                      {seraData.temp <= seraData.targetTemp && seraData.hum >= seraData.targetHum && <div className="text-emerald-400 flex items-center gap-2 mt-1"><span>✅</span> Ortam istenen hedef değerlerde.</div>}
+                      <div className="space-y-2">
+                        {/* Sıcaklık Durumları */}
+                        {seraData.temp > seraData.targetTemp ? (
+                          <div className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Sıcaklık hedefin üzerinde! Fan çalışıyor.</div>
+                        ) : seraData.temp < seraData.targetTemp ? (
+                          <div className="text-amber-400 flex items-center gap-2"><span>☀️</span> Sıcaklık düşük. Doğal ısınma bekleniyor.</div>
+                        ) : (
+                          <div className="text-emerald-400 flex items-center gap-2"><span>✅</span> Sıcaklık tam hedeflenen değerde.</div>
+                        )}
+
+                        {/* Nem Durumları (GÜNCELLENDİ) */}
+                        {seraData.hum < seraData.targetHum ? (
+                          <div className="text-blue-400 flex items-center gap-2"><span className="animate-bounce">💧</span> Nem hedefin altında! Pompa çalışıyor.</div>
+                        ) : seraData.hum > seraData.targetHum ? (
+                          <div className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Nem yüksek! Fan çalışıyor (Tahliye yapılıyor).</div>
+                        ) : (
+                          <div className="text-emerald-400 flex items-center gap-2"><span>✅</span> Nem tam hedeflenen değerde.</div>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <div className="space-y-2 transition-all">
@@ -512,7 +532,7 @@
                       )}
                       {seraData.motorSpeed > 0 && (
                         <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm font-bold flex items-center gap-3 animate-pulse">
-                          <span className="text-2xl animate-spin">🌀</span> Fan Çalışıyor (Ortam Soğutuluyor...)
+                          <span className="text-2xl animate-spin">🌀</span> Fan Çalışıyor (Sıcaklık ve Nem Düşürülüyor...)
                         </div>
                       )}
                     </div>
@@ -524,7 +544,6 @@
                   <SensorCard title="Nem" value={seraData.hum} unit="%" emoji="💧" colorClass={seraData.hum < seraData.targetHum ? "border-amber-500/50 bg-amber-500/10" : ""} />
                 </div>
 
-                {/* YENİ: HEDEF DEĞERLER (OTONOM MOD İÇİN) */}
                 <div className="glass-panel rounded-2xl p-5 mb-4 border border-white/5">
                   <div className="flex justify-between items-center mb-4">
                      <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
@@ -533,7 +552,6 @@
                   </div>
                   
                   <div className="grid grid-cols-2 gap-6">
-                    {/* İdeal Sıcaklık Ayarı */}
                     <div className="flex flex-col items-center">
                       <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Hedef Sıcaklık</div>
                       <div className="flex items-center justify-between w-full bg-slate-800/50 rounded-xl p-1 border border-white/5">
@@ -549,7 +567,6 @@
                       </div>
                     </div>
 
-                    {/* İdeal Nem Ayarı */}
                     <div className="flex flex-col items-center">
                       <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mb-2">Hedef Nem</div>
                       <div className="flex items-center justify-between w-full bg-slate-800/50 rounded-xl p-1 border border-white/5">

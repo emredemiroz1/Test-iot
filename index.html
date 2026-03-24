@@ -158,15 +158,21 @@
       const [loading, setLoading] = useState(false);
       const [errorMsg, setErrorMsg] = useState("");
       
-      // Hangi projenin aktif olduğunu tutan state (home, greenhouse, parking)
+      // Hangi projenin aktif olduğunu tutan state
       const [projectMode, setProjectMode] = useState(null);
 
       // Sistem Durumları
       const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
-      const [seraData, setSeraData] = useState({ temp: 0, hum: 0, auto: false, pump: false, motorSpeed: 0 });
+      const [seraData, setSeraData] = useState({ temp: 24, hum: 45, auto: false, pump: false, motorSpeed: 0 });
       const [parkData, setParkData] = useState({ occupied: 0, slots: [false, false, false, false] });
 
       const [localMotorSpeed, setLocalMotorSpeed] = useState(0);
+
+      // Sera verisini referans olarak tutuyoruz (simülasyon döngüsü için)
+      const seraDataRef = useRef(seraData);
+      useEffect(() => {
+        seraDataRef.current = seraData;
+      }, [seraData]);
 
       useEffect(() => {
         const t = setInterval(() => {
@@ -222,10 +228,18 @@
                 return fallback;
               };
 
+              // Sensörden bozuk/devasa veri gelirse (Örn: 2147483647) filtrele
+              let safeTemp = getVal("temp", 24);
+              if (safeTemp > 100 || safeTemp < -20) safeTemp = 24; 
+              
+              let safeHum = getVal("hum", 45);
+              if (safeHum > 100 || safeHum < 0) safeHum = 45;
+
               const newSpeed = getVal("motorSpeed", 0);
+              
               setSeraData({
-                temp: getVal("temp", 0),
-                hum: getVal("hum", 0),
+                temp: safeTemp,
+                hum: safeHum,
                 auto: getVal("auto", false),
                 pump: getVal("pump", false),
                 motorSpeed: newSpeed
@@ -259,6 +273,51 @@
 
         return () => { unsubHome(); unsubSera(); unsubPark(); };
       }, [user]);
+
+      // SERA SİMÜLASYON MOTORU
+      // Manuel veya otomatik modda pompa/fan açılınca gerçekçi hissettirmek için Firebase'deki değerleri yavaşça değiştirir.
+      useEffect(() => {
+        if (!user || projectMode !== "greenhouse") return;
+        
+        const simInterval = setInterval(() => {
+          const current = seraDataRef.current;
+          let t = current.temp;
+          let h = current.hum;
+          let changed = false;
+
+          // Hatalı veri varsa hemen düzelt
+          if (t > 100 || t < -20) { t = 24; changed = true; }
+          if (h > 100 || h < 0) { h = 45; changed = true; }
+
+          if (current.auto) {
+            // OTONOM MOD: Sıcaklık yüksekse soğut, nem düşükse nemlendir
+            if (t > 30) { t -= 1; changed = true; }
+            else if (t < 34 && Math.random() > 0.6) { t += 1; changed = true; } // Güneş etkisi (ısınma)
+            
+            if (h < 40) { h += 2; changed = true; }
+            else if (h > 35 && Math.random() > 0.6) { h -= 1; changed = true; } // Doğal kuruma
+          } else {
+            // MANUEL MOD: Kullanıcının açtığı butona göre tepki ver
+            if (current.pump) { h += 3; changed = true; } // Pompa açıksa nem hızla artar
+            else if (h > 35 && Math.random() > 0.6) { h -= 1; changed = true; } // Kapalıysa yavaşça düşer
+
+            if (current.motorSpeed > 0) { t -= 1; changed = true; } // Fan açıksa soğur
+            else if (t < 32 && Math.random() > 0.6) { t += 1; changed = true; } // Kapalıysa yavaşça ısınır
+          }
+
+          // Limitleri koru (Sıcaklık 15-50, Nem 20-95 arası)
+          t = Math.max(15, Math.min(t, 50));
+          h = Math.max(20, Math.min(h, 95));
+
+          if (changed) {
+            const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "greenhouse", "status");
+            window.FB.setDoc(ref, { temp: t, hum: h }, { merge: true }).catch(console.error);
+          }
+        }, 3000); // Her 3 saniyede bir ufak simülasyon değişimi
+
+        return () => clearInterval(simInterval);
+      }, [user, projectMode]);
+
 
       // PIN KONTROL SİSTEMİ
       function login() {
@@ -318,7 +377,6 @@
               <div className="absolute top-0 left-0 w-full h-2 bg-blue-600"></div>
               
               <div className="text-center mb-8 mt-4 flex flex-col items-center">
-                {/* LOGO ALANI - PNG DOSYASINDAN ÇEKİLİR */}
                 <div className="mb-3 flex justify-center w-full">
                   <img 
                     src="mucitlogo.png" 
@@ -326,8 +384,6 @@
                     className="h-32 object-contain"
                   />
                 </div>
-
-                {/* YAZI KISMI */}
                 <h1 className="text-center text-4xl font-black tracking-tighter text-slate-900 leading-[1.1]">
                   MUCİT<br/><span className="text-blue-600">AKADEMİSİ</span>
                 </h1>
@@ -360,7 +416,6 @@
         );
       }
 
-      // Dinamik Başlık ve İkon Seçimi
       let projectTitle = "IoT KONTROL";
       let projectIcon = "⚡";
       
@@ -429,6 +484,33 @@
                   {loading && <span className="loader border-green-500"></span>}
                 </div>
 
+                {/* YENİ: ANLIK DURUM BİLDİRİM PANELİ (İBARELER) */}
+                <div className="mb-4">
+                  {seraData.auto ? (
+                    <div className="p-4 rounded-2xl bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-sm transition-all">
+                      <div className="font-bold flex items-center gap-2 mb-2 text-indigo-200">
+                        <span className="text-xl">🤖</span> Otonom Mod Aktif (Yapay Zeka)
+                      </div>
+                      {seraData.temp > 30 && <div className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Sıcaklık Yüksek! Fan Otomatik Çalışıyor.</div>}
+                      {seraData.hum < 40 && <div className="text-blue-400 flex items-center gap-2 mt-1"><span className="animate-bounce">💧</span> Nem Düşük! Su Pompası Otomatik Çalışıyor.</div>}
+                      {seraData.temp <= 30 && seraData.hum >= 40 && <div className="text-emerald-400 flex items-center gap-2 mt-1"><span>✅</span> Ortam Değerleri Optimum Seviyede.</div>}
+                    </div>
+                  ) : (
+                    <div className="space-y-2 transition-all">
+                      {seraData.pump && (
+                        <div className="p-3 rounded-2xl bg-blue-500/10 border border-blue-500/30 text-blue-300 text-sm font-bold flex items-center gap-3 animate-pulse">
+                          <span className="text-2xl">💧</span> Su Pompası Çalışıyor (Nem Yükseltiliyor...)
+                        </div>
+                      )}
+                      {seraData.motorSpeed > 0 && (
+                        <div className="p-3 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-sm font-bold flex items-center gap-3 animate-pulse">
+                          <span className="text-2xl animate-spin">🌀</span> Fan Çalışıyor (Ortam Soğutuluyor...)
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
                 <div className="grid grid-cols-2 gap-4 mb-6">
                   <SensorCard title="Sıcaklık" value={seraData.temp} unit="°C" emoji="🌡️" colorClass={seraData.temp > 30 ? "border-red-500/50 bg-red-500/10" : ""} />
                   <SensorCard title="Nem" value={seraData.hum} unit="%" emoji="💧" colorClass={seraData.hum < 40 ? "border-amber-500/50 bg-amber-500/10" : ""} />
@@ -436,22 +518,17 @@
 
                 <div className="glass-panel p-1 rounded-2xl mb-4">
                   <Toggle 
-                    title="Otonom Mod (Yapay Zeka)" 
+                    title="Otonom Mod" 
                     emoji="🤖" 
                     active={seraData.auto} 
                     onClick={() => updateSera("auto", !seraData.auto)} 
-                    activeColor="bg-gradient-to-r from-green-500 to-emerald-600" 
+                    activeColor="bg-gradient-to-r from-indigo-500 to-purple-600" 
                     disabled={loading} 
                   />
-                  {seraData.auto && (
-                    <div className="px-5 pb-4 pt-2 text-xs text-emerald-400 font-medium">
-                      ✓ Sistem sıcaklık 30°C'yi aşarsa fanı, nem %40'ın altına düşerse pompayı otomatik çalıştırır.
-                    </div>
-                  )}
                 </div>
 
                 <div className={`space-y-4 transition-opacity ${seraData.auto ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
-                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest ml-2">Manuel Kontroller</h3>
+                  <h3 className="text-sm font-bold text-slate-500 uppercase tracking-widest ml-2 mt-6">Manuel Kontroller</h3>
                   
                   <Toggle 
                     title="Su Pompası" 

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Mucit Akademisi | Akıllı Sera Sistemi</title>
+  <title>Mucit Akademisi | Akıllı IoT Sistemleri</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -123,11 +123,11 @@
     // --- YENİ BİLEŞEN: GÖRSEL DİJİTAL İKİZ (SERA SİMÜLATÖRÜ) ---
     function GreenhouseVisualizer({ left, right }) {
       const ZoneVisual = ({ title, data }) => {
-        // Tolerans paylarına göre görsel durum analizleri
-        const isHot = data.temp > data.targetTemp + 1;
-        const isCold = data.temp < data.targetTemp - 1;
-        const isDry = data.soil < data.targetSoil - 5;
-        const isHumid = data.hum > data.targetHum + 5;
+        // Tam hedefe göre durum analizleri
+        const isHot = data.temp > data.targetTemp;
+        const isCold = data.temp < data.targetTemp;
+        const isDry = data.soil < data.targetSoil;
+        const isHumid = data.hum > data.targetHum;
 
         // Arka plan rengi ve ışık yansıması
         let airBg = "bg-emerald-500/5 shadow-[inset_0_0_20px_rgba(16,185,129,0.05)]";
@@ -147,22 +147,22 @@
               
               {/* Dinamik Işıklar / LED Panel */}
               <div className="absolute top-2 right-2 flex gap-1">
-                {/* Sıcaklık LED'i (Kırmızı=Sıcak, Mavi=Soğuk) */}
+                {/* Sıcaklık LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${isHot ? 'bg-red-500 shadow-[0_0_8px_#ef4444]' : isCold ? 'bg-sky-500 shadow-[0_0_8px_#0ea5e9]' : 'bg-slate-700'}`}></div>
-                {/* Toprak Kuru LED'i (Turuncu) */}
+                {/* Toprak Kuru LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${isDry ? 'bg-amber-500 shadow-[0_0_8px_#f59e0b]' : 'bg-slate-700'}`}></div>
-                {/* Pompa LED'i (Mavi) */}
+                {/* Pompa LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${data.pump ? 'bg-blue-500 shadow-[0_0_8px_#3b82f6]' : 'bg-slate-700'}`}></div>
-                {/* Fan LED'i (Camgöbeği) */}
+                {/* Fan LED'i */}
                 <div className={`w-1.5 h-1.5 rounded-full transition-all ${data.fan ? 'bg-cyan-500 shadow-[0_0_8px_#06b6d4]' : 'bg-slate-700'}`}></div>
               </div>
 
               {/* Merkez İkon */}
               <div className={`text-4xl opacity-90 transition-transform duration-500 ${data.fan ? 'animate-spin text-cyan-400' : ''}`}>
-                {data.fan ? '🌀' : isHot ? '🔥' : isCold ? '❄️' : '☀️'}
+                {data.fan ? '🌀' : isHot ? '🔥' : isCold ? '☀️' : '✅'}
               </div>
-              <div className="text-[8px] font-bold mt-2 opacity-70 tracking-widest uppercase">
-                {data.fan ? 'Soğutuluyor' : isHot ? 'Sıcak' : isCold ? 'Soğuk' : 'İdeal Isı'}
+              <div className="text-[8px] font-bold mt-2 opacity-70 tracking-widest uppercase text-center">
+                {data.fan ? 'Soğutuluyor' : isHot ? 'Sıcak' : isCold ? 'Doğal Isınma' : 'İdeal Isı'}
               </div>
             </div>
 
@@ -184,7 +184,7 @@
       };
 
       return (
-        <div className="mb-8 w-full max-w-[340px] mx-auto animate-[fadeIn_0.5s_ease-out]">
+        <div className="mb-8 w-full max-w-[380px] mx-auto animate-[fadeIn_0.5s_ease-out]">
           <div className="text-center mb-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center justify-center gap-2">
             <span>👁️</span> Canlı Sera Görünümü
           </div>
@@ -214,29 +214,33 @@
     function ZoneCard({ zoneKey, title, data, onUpdate, autoMode, waterLow }) {
       const { temp, hum, soil, targetTemp, targetHum, targetSoil, pump, fan } = data;
 
-      const isTempHigh = temp > targetTemp + 1;
-      const isTempLow = temp < targetTemp - 1;
-      const isHumHigh = hum > targetHum + 5;
-      const isSoilDry = soil < targetSoil - 5;
-      const isSoilWet = soil > targetSoil + 10;
+      // Tam hedefe ulaşıp ulaşmadığına bakar (Tolerans YOK)
+      const isTempHigh = temp > targetTemp;
+      const isTempLow = temp < targetTemp;
+      const isHumHigh = hum > targetHum;
+      const isHumLow = hum < targetHum;
+      const isSoilDry = soil < targetSoil;
+      const isSoilWet = soil > targetSoil;
 
       let statusMessages = [];
       if (autoMode) {
-        if (isTempHigh) statusMessages.push(<div key="t" className="text-cyan-400">🌀 Sıcaklık Yüksek! Fan Devrede.</div>);
-        else if (isHumHigh) statusMessages.push(<div key="h" className="text-cyan-400">🌀 Nem Çok Yüksek! Havalandırma Devrede.</div>);
+        if (isTempHigh) statusMessages.push(<div key="t" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Sıcaklık Yüksek! Fan Devrede.</div>);
+        else if (isTempLow) statusMessages.push(<div key="tl" className="text-amber-400 flex items-center gap-2"><span>☀️</span> Sıcaklık Düşük. Doğal Isınma Bekleniyor.</div>);
         
-        if (isSoilDry && !waterLow) statusMessages.push(<div key="s" className="text-blue-400">💧 Toprak Kuru! Sulama Yapılıyor.</div>);
-        else if (isSoilDry && waterLow) statusMessages.push(<div key="sw" className="text-red-400">⚠️ Toprak Kuru! Ancak SU DEPOSU BOŞ!</div>);
+        if (isHumHigh) statusMessages.push(<div key="h" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Nem Yüksek! Tahliye Yapılıyor.</div>);
         
-        if (statusMessages.length === 0) statusMessages.push(<div key="ok" className="text-emerald-400">✅ Ortam Değerleri İdeal Seviyede.</div>);
+        if (isSoilDry && !waterLow) statusMessages.push(<div key="s" className="text-blue-400 flex items-center gap-2"><span className="animate-bounce">💧</span> Toprak Kuru! Sulama Yapılıyor.</div>);
+        else if (isSoilDry && waterLow) statusMessages.push(<div key="sw" className="text-red-400 flex items-center gap-2"><span>⚠️</span> Toprak Kuru! Ancak SU DEPOSU BOŞ!</div>);
+        
+        if (!isTempHigh && !isTempLow && !isHumHigh && !isSoilDry) statusMessages.push(<div key="ok" className="text-emerald-400 flex items-center gap-2"><span>✅</span> Ortam Değerleri İdeal Seviyede.</div>);
       } else {
-        if (pump) statusMessages.push(<div key="mp" className="text-blue-400">💧 Manuel Sulama Aktif...</div>);
-        if (fan) statusMessages.push(<div key="mf" className="text-cyan-400">🌀 Manuel Fan Aktif...</div>);
-        if (!pump && !fan) statusMessages.push(<div key="mn" className="text-slate-400">🔧 Sistem Manuel Beklemede.</div>);
+        if (pump) statusMessages.push(<div key="mp" className="text-blue-400 flex items-center gap-2">💧 Manuel Sulama Aktif...</div>);
+        if (fan) statusMessages.push(<div key="mf" className="text-cyan-400 flex items-center gap-2"><span className="animate-spin">🌀</span> Manuel Fan Aktif...</div>);
+        if (!pump && !fan) statusMessages.push(<div key="mn" className="text-slate-400 flex items-center gap-2">🔧 Sistem Manuel Beklemede.</div>);
       }
 
       return (
-        <div className="glass-panel rounded-[24px] p-5 mb-6 border border-white/10 shadow-xl relative overflow-hidden">
+        <div className="glass-panel rounded-[24px] p-5 border border-white/10 shadow-xl relative overflow-hidden flex flex-col h-full">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-emerald-500"></div>
           
           <h2 className="text-xl font-black text-white mb-4 tracking-tight flex items-center gap-2">
@@ -245,15 +249,15 @@
 
           <div className="grid grid-cols-3 gap-2 mb-4">
             <MetricCard title="Sıcaklık" value={temp} unit="°C" emoji="🌡️" isDanger={isTempHigh} isWarning={isTempLow} />
-            <MetricCard title="Hava Nem" value={hum} unit="%" emoji="☁️" isDanger={isHumHigh} isWarning={false} />
+            <MetricCard title="Hava Nem" value={hum} unit="%" emoji="☁️" isDanger={isHumHigh} isWarning={isHumLow} />
             <MetricCard title="Toprak" value={soil} unit="%" emoji="🪴" isDanger={isSoilDry} isWarning={isSoilWet} />
           </div>
 
-          <div className="bg-slate-900/60 rounded-xl p-4 mb-4 border border-white/5 text-xs font-medium space-y-1.5">
+          <div className="bg-slate-900/60 rounded-xl p-4 mb-4 border border-white/5 text-xs font-medium space-y-2">
             {statusMessages}
           </div>
 
-          <div className="border-t border-white/5 pt-4 mt-2">
+          <div className="border-t border-white/5 pt-4 mt-auto">
             <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3 flex justify-between">
               <span>{autoMode ? "🎯 Hedef Ayarları" : "🔧 Manuel Kontroller & Hedefler"}</span>
               {autoMode && <span className="text-indigo-400">Otonom Devrede</span>}
@@ -304,6 +308,10 @@
       const [errorMsg, setErrorMsg] = useState("");
       const [projectMode, setProjectMode] = useState(null);
 
+      // Home (Ev Kontrol) State
+      const [homeData, setHomeData] = useState({ light: false, kitchen: false, plug: false, ac: false, garden: false });
+      
+      // Sera State
       const defaultZone = { temp: 24, hum: 45, soil: 60, pump: false, fan: false, targetTemp: 26, targetHum: 50, targetSoil: 60 };
       const [sera, setSera] = useState({
         auto: false,
@@ -311,6 +319,9 @@
         left: { ...defaultZone },
         right: { ...defaultZone }
       });
+
+      // Otopark State
+      const [parkData, setParkData] = useState({ occupied: 0, slots: [false, false, false, false] });
 
       const seraRef = useRef(sera);
       useEffect(() => { seraRef.current = sera; }, [sera]);
@@ -329,54 +340,98 @@
         return () => unsub && unsub();
       }, [ready]);
 
+      // Firebase Dinleyicileri (Tüm Projeler İçin)
       useEffect(() => {
-        if (!user || projectMode !== "greenhouse") return;
-        const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "greenhouse", "status");
+        if (!user) return;
+        const db = window.FB.db;
+        const appId = window.APP_ID;
         
-        const unsub = window.FB.onSnapshot(ref, (snap) => {
-          if (snap.exists()) {
-            const d = snap.data();
-            const gv = (key, fallback) => {
-              if (d[key] !== undefined) return d[key];
-              if (d.fields && d.fields[key]) {
-                let f = d.fields[key];
-                return f.integerValue !== undefined ? Number(f.integerValue) : 
-                       f.doubleValue !== undefined ? Number(f.doubleValue) : 
-                       f.booleanValue !== undefined ? f.booleanValue : fallback;
-              }
-              return fallback;
-            };
+        // Akıllı Ev Dinleyici
+        const unsubHome = window.FB.onSnapshot(
+          window.FB.doc(db, "artifacts", appId, "public", "data", "home", "status"),
+          (snap) => { if (snap.exists()) setHomeData(prev => ({ ...prev, ...snap.data() })); }
+        );
 
-            const parseZone = (prefix) => {
-              let t = gv(`${prefix}_temp`, 24); if (t > 80 || t < -10) t = 24; 
-              let h = gv(`${prefix}_hum`, 45); if (h > 100 || h < 0) h = 45;
-              let s = gv(`${prefix}_soil`, 60); if (s > 100 || s < 0) s = 60;
-              return {
-                temp: t, hum: h, soil: s,
-                pump: gv(`${prefix}_pump`, false), fan: gv(`${prefix}_fan`, false),
-                targetTemp: gv(`${prefix}_targetTemp`, 26), 
-                targetHum: gv(`${prefix}_targetHum`, 50),
-                targetSoil: gv(`${prefix}_targetSoil`, 60)
+        // Sera Dinleyici
+        const unsubSera = window.FB.onSnapshot(
+          window.FB.doc(db, "artifacts", appId, "public", "data", "greenhouse", "status"),
+          (snap) => {
+            if (snap.exists()) {
+              const d = snap.data();
+              const gv = (key, fallback) => {
+                if (d[key] !== undefined) return d[key];
+                if (d.fields && d.fields[key]) {
+                  let f = d.fields[key];
+                  return f.integerValue !== undefined ? Number(f.integerValue) : 
+                         f.doubleValue !== undefined ? Number(f.doubleValue) : 
+                         f.booleanValue !== undefined ? f.booleanValue : fallback;
+                }
+                return fallback;
               };
-            };
 
-            setSera({
-              auto: gv("auto", false),
-              waterLevel: gv("waterLevel", 80),
-              left: parseZone("left"),
-              right: parseZone("right")
-            });
+              const parseZone = (prefix) => {
+                let t = gv(`${prefix}_temp`, 24); if (t > 80 || t < -10) t = 24; 
+                let h = gv(`${prefix}_hum`, 45); if (h > 100 || h < 0) h = 45;
+                let s = gv(`${prefix}_soil`, 60); if (s > 100 || s < 0) s = 60;
+                return {
+                  temp: t, hum: h, soil: s,
+                  pump: gv(`${prefix}_pump`, false), fan: gv(`${prefix}_fan`, false),
+                  targetTemp: gv(`${prefix}_targetTemp`, 26), 
+                  targetHum: gv(`${prefix}_targetHum`, 50),
+                  targetSoil: gv(`${prefix}_targetSoil`, 60)
+                };
+              };
+
+              setSera({
+                auto: gv("auto", false),
+                waterLevel: gv("waterLevel", 80),
+                left: parseZone("left"),
+                right: parseZone("right")
+              });
+            }
           }
-        });
-        return () => unsub();
-      }, [user, projectMode]);
+        );
 
+        // Otopark Dinleyici
+        const unsubPark = window.FB.onSnapshot(
+          window.FB.doc(db, "artifacts", appId, "public", "data", "parking", "status"),
+          (snap) => {
+            if (snap.exists()) {
+              const d = snap.data();
+              let occupied = 0;
+              let slots = [false, false, false, false];
+
+              if (d.occupied !== undefined) {
+                occupied = d.occupied;
+                slots = d.slots || slots;
+              } else if (d.fields) {
+                occupied = d.fields.occupied?.integerValue ? Number(d.fields.occupied.integerValue) : 0;
+                if (d.fields.slots?.arrayValue?.values) {
+                  slots = d.fields.slots.arrayValue.values.map(v => v.booleanValue === true);
+                }
+              }
+              setParkData({ occupied, slots });
+            }
+          }
+        );
+
+        return () => { unsubHome(); unsubSera(); unsubPark(); };
+      }, [user]);
+
+      // Firebase Yazma Fonksiyonları
       const updateSeraFlat = async (field, value) => {
         if (!user) return;
         const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "greenhouse", "status");
         await window.FB.setDoc(ref, { [field]: value }, { merge: true }).catch(console.error);
       };
 
+      const toggleHome = async (field) => {
+        if (!user) return;
+        const ref = window.FB.doc(window.FB.db, "artifacts", window.APP_ID, "public", "data", "home", "status");
+        await window.FB.setDoc(ref, { [field]: !homeData[field] }, { merge: true }).catch(console.error);
+      };
+
+      // SERA SİMÜLASYONU (Tam Hedef Odaklı & Atlamasız)
       useEffect(() => {
         if (!user || projectMode !== "greenhouse") return;
         
@@ -394,20 +449,24 @@
             let { temp: t, hum: h, soil: s, pump, fan, targetTemp, targetHum, targetSoil } = z;
 
             if (current.auto) {
-              if (t > targetTemp + 1 || h > targetHum + 5) fan = true;
+              // Otonom Kararlar (Tam hedefe göre)
+              if (t > targetTemp || h > targetHum) fan = true;
               else if (t <= targetTemp && h <= targetHum) fan = false;
 
-              if (s < targetSoil - 5) pump = true;
+              if (s < targetSoil) pump = true;
               else if (s >= targetSoil) pump = false;
             }
 
             if (waterLow && pump) pump = false;
 
+            // Sensör Simülasyonu
             if (pump) {
-              s += 4; 
+              s += 2; // Daha yavaş artış (Hedefi atlamamak için)
               h += 1; 
-              if (newWaterLevel > 0) newWaterLevel -= 1; 
-            } else if (s > 20 && Math.random() > 0.5) s -= 0.5; 
+              if (newWaterLevel > 0) newWaterLevel -= 0.5; 
+            } else if (s > 20 && Math.random() > 0.5) {
+              s -= 0.5; 
+            }
 
             if (fan) {
               t -= 1; 
@@ -417,9 +476,22 @@
               if (h > 30 && Math.random() > 0.7) h -= 0.5; 
             }
 
+            // Otonom Modda Hedefe Kilitlenme (Mükemmel Durma)
+            // Simülasyonda 25.5 gibi virgüllü durmak yerine tam hedefe yapıştırır.
+            if (current.auto) {
+               if (Math.abs(t - targetTemp) <= 1 && !fan) t = targetTemp;
+               if (Math.abs(h - targetHum) <= 2 && !fan && !pump) h = targetHum;
+               if (Math.abs(s - targetSoil) <= 2 && !pump) s = targetSoil;
+            }
+
             t = Math.max(10, Math.min(t, 55));
             h = Math.max(10, Math.min(h, 95));
             s = Math.max(0, Math.min(s, 100));
+
+            // Yuvarlama
+            t = Math.round(t * 10) / 10;
+            h = Math.round(h * 10) / 10;
+            s = Math.round(s * 10) / 10;
 
             if (t !== z.temp) changedData[`${zKey}_temp`] = t;
             if (h !== z.hum) changedData[`${zKey}_hum`] = h;
@@ -441,12 +513,20 @@
 
 
       function login() {
-        if (pin === "1111") {
+        if (pin === "0000") {
+          setProjectMode("home");
+          setLoggedIn(true);
+          setErrorMsg("");
+        } else if (pin === "1111") {
           setProjectMode("greenhouse");
           setLoggedIn(true);
           setErrorMsg("");
+        } else if (pin === "2222") {
+          setProjectMode("parking");
+          setLoggedIn(true);
+          setErrorMsg("");
         } else {
-          setErrorMsg("Test için yetki kodu: 1111 giriniz.");
+          setErrorMsg("Hatalı PIN! (Akıllı Ev: 0000 | Sera: 1111 | Otopark: 2222)");
         }
       }
 
@@ -467,7 +547,7 @@
                   MUCİT<br/><span className="text-blue-600">AKADEMİSİ</span>
                 </h1>
               </div>
-              <input type="password" maxLength="4" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && login()} placeholder="PROJE PIN (1111)" className="w-full rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-center text-xl tracking-[0.2em] text-slate-900 outline-none focus:border-blue-500 mb-4 font-bold" />
+              <input type="password" maxLength="4" value={pin} onChange={(e) => setPin(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && login()} placeholder="PROJE PIN KODU" className="w-full rounded-xl bg-slate-50 border border-slate-200 px-5 py-4 text-center text-xl tracking-[0.2em] text-slate-900 outline-none focus:border-blue-500 mb-4 font-bold" />
               <button onClick={login} className="w-full rounded-xl bg-blue-600 hover:bg-blue-700 text-white py-4 font-bold uppercase tracking-wider btn-touch">Giriş Yap</button>
               {errorMsg && <div className="mt-4 p-3 rounded-lg bg-red-50 text-red-500 text-center text-sm font-medium">{errorMsg}</div>}
             </div>
@@ -475,16 +555,24 @@
         );
       }
 
+      let projectTitle = "IoT KONTROL";
+      let projectIcon = "⚡";
+      if (projectMode === "home") { projectTitle = "AKILLI EV"; projectIcon = "🏠"; }
+      else if (projectMode === "greenhouse") { projectTitle = "AKILLI SERA"; projectIcon = "🌱"; }
+      else if (projectMode === "parking") { projectTitle = "AKILLI OTOPARK"; projectIcon = "🅿️"; }
+
       const waterLow = sera.waterLevel < 15;
 
       return (
         <div className="min-h-screen pb-12">
           <header className="px-6 py-5 glass-panel sticky top-0 z-50 flex items-center justify-between shadow-lg">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-lg shadow-lg">🌱</div>
+              <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-lg shadow-lg">
+                {projectIcon}
+              </div>
               <div>
-                <div className="text-lg font-black tracking-tight text-white">AKILLI SERA</div>
-                <div className="text-[10px] font-bold text-slate-400 uppercase flex items-center gap-1">
+                <div className="text-lg font-black tracking-tight text-white">{projectTitle}</div>
+                <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1">
                   <span className="w-2 h-2 rounded-full bg-green-500"></span> MUCİT AKADEMİSİ
                 </div>
               </div>
@@ -492,61 +580,126 @@
             <button onClick={() => { setLoggedIn(false); setPin(""); setProjectMode(null); }} className="px-4 py-2 rounded-lg bg-white/5 border border-white/10 text-xs font-bold btn-touch hover:bg-white/10">ÇIKIŞ</button>
           </header>
 
-          <main className="max-w-md mx-auto px-4 py-6">
-            
-            {/* YENİ: DİJİTAL İKİZ (GÖRSEL SERA) BÖLÜMÜ */}
-            <GreenhouseVisualizer left={sera.left} right={sera.right} />
+          {/* EKRAN GENİŞLİĞİNİ YAN YANA GÖREBİLMEK İÇİN max-w-5xl YAPTIK */}
+          <main className="max-w-5xl mx-auto px-4 py-6">
 
-            {/* GLOBAL UYARILAR & AYARLAR */}
-            <div className="mb-6 space-y-3">
-              <div className={`glass-panel rounded-2xl p-4 flex flex-col gap-2 ${waterLow ? 'danger-pulse' : 'border border-white/5'}`}>
-                <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
-                  <span className="text-blue-300 flex items-center gap-2">🌊 Ana Su Deposu</span>
-                  <span className={waterLow ? 'text-red-400' : 'text-white'}>%{Math.round(sera.waterLevel)}</span>
+            {/* AKILLI EV PROJESİ */}
+            {projectMode === "home" && (
+              <div className="max-w-md mx-auto space-y-4 animate-[fadeIn_0.3s_ease-out]">
+                <div className="mb-6">
+                  <h2 className="text-2xl font-black">Ev Kontrolü</h2>
+                  <p className="text-slate-400 text-sm">Aydınlatma ve cihazları yönetin.</p>
                 </div>
-                <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-white/5">
-                  <div className={`h-full transition-all duration-1000 ${waterLow ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${sera.waterLevel}%` }}></div>
-                </div>
-                {waterLow && <div className="text-[10px] text-red-400 font-bold mt-1 text-center bg-red-500/10 p-2 rounded-lg">⚠️ KRİTİK SEVİYE! SİSTEM POMPALARI GÜVENLİK İÇİN DURDURDU.</div>}
+                <Toggle title="Salon Işığı" emoji="💡" active={homeData.light} onClick={() => toggleHome("light")} activeColor="bg-amber-500" />
+                <Toggle title="Mutfak Işığı" emoji="🍽️" active={homeData.kitchen} onClick={() => toggleHome("kitchen")} activeColor="bg-blue-500" />
+                <Toggle title="Akıllı Priz" emoji="🔌" active={homeData.plug} onClick={() => toggleHome("plug")} activeColor="bg-emerald-500" />
+                <Toggle title="Klima (AC)" emoji="❄️" active={homeData.ac} onClick={() => toggleHome("ac")} activeColor="bg-cyan-500" />
+                <Toggle title="Bahçe Aydınlatma" emoji="🌞" active={homeData.garden} onClick={() => toggleHome("garden")} activeColor="bg-purple-500" />
               </div>
+            )}
 
-              <button
-                onClick={() => updateSeraFlat("auto", !sera.auto)}
-                className={`w-full rounded-2xl p-4 flex items-center justify-between border btn-touch transition-all shadow-lg ${
-                  sera.auto ? "bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400/50" : "bg-slate-800/80 border-white/10 text-slate-300"
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="text-3xl">🤖</div>
-                  <div className="text-left">
-                    <div className="text-sm font-black uppercase tracking-wider text-white">Otonom Sistem</div>
-                    <div className="text-[10px] text-white/70">{sera.auto ? "Yapay Zeka Devrede" : "Sistem Manuel Kontrolde"}</div>
+            {/* AKILLI SERA PROJESİ */}
+            {projectMode === "greenhouse" && (
+              <div className="animate-[fadeIn_0.3s_ease-out]">
+                
+                {/* GÖRSEL SERA DİJİTAL İKİZ */}
+                <GreenhouseVisualizer left={sera.left} right={sera.right} />
+
+                {/* GLOBAL UYARILAR & AYARLAR (Merkezlenmiş) */}
+                <div className="max-w-md mx-auto mb-6 space-y-3">
+                  <div className={`glass-panel rounded-2xl p-4 flex flex-col gap-2 ${waterLow ? 'danger-pulse' : 'border border-white/5'}`}>
+                    <div className="flex justify-between items-center text-xs font-bold uppercase tracking-widest">
+                      <span className="text-blue-300 flex items-center gap-2">🌊 Ana Su Deposu</span>
+                      <span className={waterLow ? 'text-red-400' : 'text-white'}>%{Math.round(sera.waterLevel)}</span>
+                    </div>
+                    <div className="w-full bg-slate-900 rounded-full h-3 overflow-hidden border border-white/5">
+                      <div className={`h-full transition-all duration-1000 ${waterLow ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${sera.waterLevel}%` }}></div>
+                    </div>
+                    {waterLow && <div className="text-[10px] text-red-400 font-bold mt-1 text-center bg-red-500/10 p-2 rounded-lg">⚠️ KRİTİK SEVİYE! SİSTEM POMPALARI GÜVENLİK İÇİN DURDURDU.</div>}
+                  </div>
+
+                  <button
+                    onClick={() => updateSeraFlat("auto", !sera.auto)}
+                    className={`w-full rounded-2xl p-4 flex items-center justify-between border btn-touch transition-all shadow-lg ${
+                      sera.auto ? "bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400/50" : "bg-slate-800/80 border-white/10 text-slate-300"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="text-3xl">🤖</div>
+                      <div className="text-left">
+                        <div className="text-sm font-black uppercase tracking-wider text-white">Otonom Sistem</div>
+                        <div className="text-[10px] text-white/70">{sera.auto ? "Yapay Zeka Devrede" : "Sistem Manuel Kontrolde"}</div>
+                      </div>
+                    </div>
+                    <div className={`w-12 h-6 rounded-full p-1 transition-all ${sera.auto ? "bg-white/30" : "bg-slate-900"}`}>
+                      <div className={`w-4 h-4 bg-white rounded-full transition-all ${sera.auto ? "translate-x-6" : "translate-x-0"}`}></div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* BÖLGELER (YANYANA / GRID MİMARİSİ) */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+                  <ZoneCard 
+                     zoneKey="left" 
+                     title="Sol Bölge Detayları" 
+                     data={sera.left} 
+                     onUpdate={updateSeraFlat} 
+                     autoMode={sera.auto}
+                     waterLow={waterLow}
+                  />
+                  <ZoneCard 
+                     zoneKey="right" 
+                     title="Sağ Bölge Detayları" 
+                     data={sera.right} 
+                     onUpdate={updateSeraFlat} 
+                     autoMode={sera.auto}
+                     waterLow={waterLow}
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* AKILLI OTOPARK PROJESİ */}
+            {projectMode === "parking" && (
+              <div className="max-w-md mx-auto space-y-4 animate-[fadeIn_0.3s_ease-out]">
+                <div className="mb-6 flex justify-between items-end">
+                  <div>
+                    <h2 className="text-2xl font-black">Sensör Durumu</h2>
+                    <p className="text-slate-400 text-sm">Canlı doluluk durumu.</p>
                   </div>
                 </div>
-                <div className={`w-12 h-6 rounded-full p-1 transition-all ${sera.auto ? "bg-white/30" : "bg-slate-900"}`}>
-                  <div className={`w-4 h-4 bg-white rounded-full transition-all ${sera.auto ? "translate-x-6" : "translate-x-0"}`}></div>
-                </div>
-              </button>
-            </div>
 
-            {/* BÖLGELER (ZONES) */}
-            <ZoneCard 
-               zoneKey="left" 
-               title="Sol Bölge Detayları" 
-               data={sera.left} 
-               onUpdate={updateSeraFlat} 
-               autoMode={sera.auto}
-               waterLow={waterLow}
-            />
-            
-            <ZoneCard 
-               zoneKey="right" 
-               title="Sağ Bölge Detayları" 
-               data={sera.right} 
-               onUpdate={updateSeraFlat} 
-               autoMode={sera.auto}
-               waterLow={waterLow}
-            />
+                <div className="glass-panel rounded-3xl p-6 text-center mb-8 border border-white/5">
+                  <div className="text-6xl mb-4 font-black">
+                    <span className="text-blue-400">{4 - parkData.occupied}</span>
+                    <span className="text-slate-500 text-3xl mx-2">/</span>
+                    <span className="text-slate-500 text-4xl">4</span>
+                  </div>
+                  <div className="text-sm font-bold uppercase tracking-widest text-slate-400">
+                    Boş Park Yeri
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {[0, 1, 2, 3].map((index) => {
+                    const isFull = parkData.slots[index];
+                    return (
+                      <div key={index} className={`relative rounded-2xl p-6 border-2 flex flex-col items-center justify-center gap-3 transition-colors ${
+                        isFull ? "bg-red-500/10 border-red-500/30" : "bg-emerald-500/10 border-emerald-500/30"
+                      }`}>
+                        <div className="absolute top-3 left-3 text-xs font-bold text-slate-500">P{index + 1}</div>
+                        <div className={`text-5xl transition-transform ${isFull ? 'scale-100' : 'scale-75 opacity-50 grayscale'}`}>
+                          {isFull ? "🚗" : "🅿️"}
+                        </div>
+                        <div className={`text-sm font-bold tracking-widest uppercase ${isFull ? 'text-red-400' : 'text-emerald-400'}`}>
+                          {isFull ? "Dolu" : "Boş"}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
 
           </main>
         </div>
